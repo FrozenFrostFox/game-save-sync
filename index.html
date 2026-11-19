@@ -1,0 +1,2569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cloud Save Sync — Windows / Android / Linux</title>
+  <style>
+    :root {
+      --bg:       #0f1117;
+      --surface:  #1a1d27;
+      --surface2: #22263a;
+      --border:   #2e334d;
+      --accent:   #6c63ff;
+      --accent2:  #a78bfa;
+      --green:    #34d399;
+      --red:      #f87171;
+      --yellow:   #fbbf24;
+      --text:     #e2e8f0;
+      --muted:    #94a3b8;
+      --radius:   12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 40px 20px 80px;
+    }
+
+    .header { text-align: center; margin-bottom: 32px; }
+    .header .logo { font-size: 48px; margin-bottom: 12px; }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+    .header p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      max-width: 620px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .platform-picker {
+      max-width: 1100px;
+      margin: 0 auto 28px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 700px) {
+      .platform-picker { grid-template-columns: 1fr; }
+    }
+    .platform-option {
+      cursor: pointer;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      transition: border-color 0.2s, background 0.2s, transform 0.1s;
+    }
+    .platform-option:hover { border-color: #4a5280; transform: translateY(-1px); }
+    .platform-option.selected { border-color: var(--accent); background: #211d47; }
+    .platform-option input { display: none; }
+    .platform-option .p-label { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+    .platform-option .p-desc { font-size: 0.78rem; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 28px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { order: -1; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+    }
+    .card-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent2);
+      margin-bottom: 20px;
+    }
+
+    .step { display: flex; gap: 16px; margin-bottom: 28px; }
+    .step:last-of-type { margin-bottom: 0; }
+    .step-num {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent2);
+      margin-top: 2px;
+    }
+    .step-num.optional { border-color: #3d4460; color: var(--muted); }
+    .step-body { flex: 1; }
+    .step-body label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 4px; }
+    .step-body .hint { font-size: 0.78rem; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
+    .step-body .hint code {
+      background: var(--surface2);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: 'Consolas', monospace;
+      font-size: 0.75rem;
+      color: var(--accent2);
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      vertical-align: middle;
+      margin-left: 6px;
+    }
+    .badge-optional { background: #2a2f45; color: var(--muted); border: 1px solid #3d4460; }
+
+    input[type="text"] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.88rem;
+      font-family: 'Consolas', monospace;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus { border-color: var(--accent); }
+    input[type="text"]::placeholder { color: #4a5270; }
+    input[type="text"].error { border-color: var(--red); }
+
+    .field-error { font-size: 0.75rem; color: var(--red); margin-top: 4px; display: none; }
+    .field-error.visible { display: block; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+    .mode-toggle { display: flex; gap: 10px; margin-top: 4px; }
+    .mode-option {
+      flex: 1;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 12px 14px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .mode-option:hover { border-color: #4a5280; }
+    .mode-option.selected { border-color: var(--accent); background: #2a2650; }
+    .mode-option input { display: none; }
+    .mode-option .mode-label { font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; }
+    .mode-option .mode-desc { font-size: 0.74rem; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-family: 'Consolas', monospace;
+      padding: 10px 14px;
+      outline: none;
+      resize: vertical;
+      min-height: 90px;
+      transition: border-color 0.2s;
+    }
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: #4a5270; }
+    textarea.error { border-color: var(--red); }
+
+    .btn-generate {
+      width: 100%;
+      padding: 14px 24px;
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-generate:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-generate:active { transform: translateY(0); }
+
+    .success-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: #0d2e22;
+      border: 1px solid var(--green);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 16px;
+      font-size: 0.88rem;
+      color: var(--green);
+    }
+    .success-banner.visible { display: flex; }
+
+    .tip-block { margin-bottom: 20px; }
+    .tip-block:last-child { margin-bottom: 0; }
+    .tip-block h3 {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--accent2);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tip-block p, .tip-block li { font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+    .tip-block ol, .tip-block ul { padding-left: 16px; }
+    .tip-block li { margin-bottom: 4px; }
+    .tip-block code {
+      background: var(--surface2);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: 'Consolas', monospace;
+      font-size: 0.75rem;
+      color: var(--text);
+    }
+
+    .preview-wrap { margin-top: 28px; display: none; }
+    .preview-wrap.visible { display: block; }
+    .preview-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .preview-header span { font-size: 0.82rem; color: var(--muted); }
+    .btn-copy {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.78rem;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .btn-copy:hover { border-color: var(--accent2); }
+
+    pre {
+      background: #080b12;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      font-family: 'Consolas', monospace;
+      font-size: 0.75rem;
+      color: #a9b1d6;
+      overflow-x: auto;
+      line-height: 1.6;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .note {
+      font-size: 0.78rem;
+      color: var(--yellow);
+      background: #2a230d;
+      border: 1px solid #4a3f14;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">☁️🎮</div>
+  <h1>Cloud Save Sync</h1>
+  <p>Pick your platform, fill in the paths, and get a ready-to-run script that syncs your save data with <strong>your own Google Drive account</strong>.</p>
+</header>
+
+<div class="platform-picker">
+  <label class="platform-option selected" id="platOptWindows">
+    <input type="radio" name="platform" value="windows" checked onchange="setPlatform('windows')" />
+    <div class="p-label">🪟 Windows</div>
+    <div class="p-desc">Full autopilot: watches your game, syncs before and after automatically. Python.</div>
+  </label>
+  <label class="platform-option" id="platOptAndroid">
+    <input type="radio" name="platform" value="android" onchange="setPlatform('android')" />
+    <div class="p-label">🤖 Android</div>
+    <div class="p-desc">Tap-based sync via Termux + a home screen widget.</div>
+  </label>
+  <label class="platform-option" id="platOptLinux">
+    <input type="radio" name="platform" value="linux" onchange="setPlatform('linux')" />
+    <div class="p-label">🐧 Linux</div>
+    <div class="p-desc">Autopilot like Windows (watches the game process), via rclone.</div>
+  </label>
+</div>
+
+<div class="layout">
+
+  <div>
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        Script Configuration
+        <label for="importScriptFile" style="font-size:0.78rem;font-weight:500;color:var(--accent2);cursor:pointer;padding:4px 10px;border:1px solid var(--accent2);border-radius:6px;opacity:0.8;transition:opacity .15s;" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.8" title="Load an existing generated .py, .sh or built .exe file to pre-fill this form">
+          ↑ Import script / .exe
+        </label>
+        <input type="file" id="importScriptFile" accept=".py,.sh,.exe" style="display:none" onchange="importScript(this)" />
+      </div>
+
+      <!-- Shared fields -->
+      <div class="step">
+        <div class="step-num">✦</div>
+        <div class="step-body">
+          <label for="gameName">Game name <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+          <div class="hint">Used to name your script file and label the console output. Shared across all platforms.</div>
+          <input type="text" id="gameName" placeholder="e.g.  Hollow Knight" />
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">✦</div>
+        <div class="step-body">
+          <label for="driveFolder">Google Drive folder link</label>
+          <div class="hint">
+            Create (or pick) a folder in your Google Drive first, open it, then copy its link from the address bar or the <em>Share</em> menu and paste it here. Shared across all platforms — it's the same folder either way.<br/>
+            Example: <code>https://drive.google.com/drive/folders/1AbCdEfGhIJKLmnOPQRstuVWXyz</code>
+          </div>
+          <input type="text" id="driveFolder" placeholder='e.g.  https://drive.google.com/drive/folders/1AbCdEfGhIJKLmnOPQRstuVWXyz' />
+          <div class="field-error" id="err-driveFolder">Please enter a Google Drive folder link (or its folder ID).</div>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+            <div id="platformWindows">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <label for="win_gameExe">Game executable path <span style="color:var(--muted);font-weight:400">(.exe)</span></label>
+            <div class="hint">
+              The <code>.exe</code> file for the actual game — <strong>not a launcher</strong>. Used to detect when the game is running and when it closes.<br/>
+              Tip: hold <code>Shift</code> + right-click the file → <em>Copy as path</em>. Quotes are stripped automatically.
+            </div>
+            <input type="text" id="win_gameExe"
+                   placeholder='e.g.  C:\Games\HollowKnight\hollow_knight.exe' />
+            <div class="field-error" id="err-win_gameExe">Please enter the path to the game .exe file.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num optional">2</div>
+          <div class="step-body">
+            <label for="win_gameShortcut">
+              Windows shortcut
+              <span class="badge badge-optional">Optional</span>
+            </label>
+            <div class="hint">
+              A <code>.lnk</code> shortcut to launch the game (e.g. from your Desktop or Start Menu). Useful when a launcher or platform (Steam, Epic…) needs to start first.<br/>
+              Leave blank to launch directly from the exe above.
+            </div>
+            <input type="text" id="win_gameShortcut"
+                   placeholder='e.g.  C:\Users\You\Desktop\Hollow Knight.lnk' />
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <label>What do you want to sync?</label>
+            <div class="hint">Pick "specific file(s)" if the game only writes a save file (or a couple of files) rather than a whole folder.</div>
+            <div class="mode-toggle">
+              <label class="mode-option selected" id="winModeOptFolder">
+                <input type="radio" name="winSyncMode" value="folder" checked onchange="setWinMode('folder')" />
+                <div class="mode-label">📁 Whole folder</div>
+                <div class="mode-desc">Syncs everything inside a save folder.</div>
+              </label>
+              <label class="mode-option" id="winModeOptFiles">
+                <input type="radio" name="winSyncMode" value="files" onchange="setWinMode('files')" />
+                <div class="mode-label">📄 Specific file(s)</div>
+                <div class="mode-desc">Syncs one or more individual files by path.</div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="win_stepFolder">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <label for="win_localSave">Local save data folder</label>
+            <div class="hint">
+              The folder on your PC that contains the save data.<br/>
+              Common locations: <code>%AppData%\&lt;Game&gt;</code>, <code>%USERPROFILE%\Documents\My Games\&lt;Game&gt;</code>, or inside the game's own folder.
+            </div>
+            <input type="text" id="win_localSave"
+                   placeholder='e.g.  C:\Users\You\AppData\Roaming\HollowKnight\Saves' />
+            <div class="field-error" id="err-win_localSave">Please enter the path to your local save data.</div>
+          </div>
+        </div>
+
+        <div class="step" id="win_stepFiles" style="display:none">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <label for="win_localFiles">Local file path(s)</label>
+            <div class="hint">One full file path per line — works for a single file too. Each file is synced individually, matched to a same-named file in the Drive folder.</div>
+            <textarea id="win_localFiles" rows="4" placeholder='e.g.&#10;C:\Users\You\AppData\Roaming\HollowKnight\Saves\user1.dat&#10;C:\Users\You\AppData\Roaming\HollowKnight\Saves\user1.dat.bak'></textarea>
+            <div class="field-error" id="err-win_localFiles">Please enter at least one file path.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <label for="win_credentialsJson">Google OAuth credentials <span style="color:var(--muted);font-weight:400">(credentials.json)</span></label>
+            <div class="hint">
+              Paste the full contents of the <code>credentials.json</code> file you download from Google Cloud Console. One-time setup — see the sidebar.<br/>
+              Your credentials are saved in this browser so you don't need to paste them again for future games.
+            </div>
+            <textarea id="win_credentialsJson"
+                      placeholder='{"installed":{"client_id":"...","client_secret":"...","redirect_uris":[...],...}}'
+                      rows="5"></textarea>
+            <div class="field-error" id="err-win_credentialsJson">Please paste your credentials.json content (must be valid JSON with an "installed" key).</div>
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn-generate" onclick="generateWin()" style="flex:1;min-width:160px;">⬇ Download as .py</button>
+          <button class="btn-generate" onclick="generateWinExe()" style="flex:1;min-width:160px;background:transparent;border:2px solid var(--accent);color:var(--accent);" title="Downloads a .bat file — double-click it to auto-build a standalone .exe (needs Python installed once)">📦 Build as .exe</button>
+        </div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;">
+          <strong>.py</strong> — run directly with Python. &nbsp;|&nbsp; <strong>.exe</strong> — downloads a builder script; double-click it to compile a standalone executable.
+        </div>
+      </div>
+
+
+            <div id="platformAndroid" style="display:none">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <label>What do you want to sync?</label>
+            <div class="hint">Most emulators keep everything in one save folder. Pick "specific file(s)" if the game only writes a save file (or a couple of files) rather than a whole folder.</div>
+            <div class="mode-toggle">
+              <label class="mode-option selected" id="andModeOptFolder">
+                <input type="radio" name="andSyncMode" value="folder" checked onchange="setAndroidMode('folder')" />
+                <div class="mode-label">📁 Whole folder</div>
+                <div class="mode-desc">Syncs everything inside a save folder.</div>
+              </label>
+              <label class="mode-option" id="andModeOptFiles">
+                <input type="radio" name="andSyncMode" value="files" onchange="setAndroidMode('files')" />
+                <div class="mode-label">📄 Specific file(s)</div>
+                <div class="mode-desc">Syncs one or more individual files by path.</div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="and_stepFolder">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <label for="and_localSave">Local save folder (on your Android device)</label>
+            <div class="hint">
+              The folder Termux can see that holds the save data.<br/>
+              <strong>Emulators</strong> (RetroArch, Dolphin, etc.): usually under <code>/storage/emulated/0/&lt;EmulatorName&gt;/saves</code>.<br/>
+              <strong>Native games/apps</strong>: their private data folder is normally blocked by Android's scoped storage unless the device is rooted or the game explicitly writes to shared storage.
+            </div>
+            <input type="text" id="and_localSave"
+                   placeholder='e.g.  /storage/emulated/0/RetroArch/saves/HollowKnight' />
+            <div class="field-error" id="err-and_localSave">Please enter the local save folder path.</div>
+          </div>
+        </div>
+
+        <div class="step" id="and_stepFiles" style="display:none">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <label for="and_localFiles">Local file path(s)</label>
+            <div class="hint">One full file path per line. Each file is synced individually — whichever copy (local or Drive) is newer wins, per file.</div>
+            <textarea id="and_localFiles" rows="4" placeholder="e.g.&#10;/storage/emulated/0/RetroArch/saves/HollowKnight.srm&#10;/storage/emulated/0/RetroArch/states/HollowKnight.state"></textarea>
+            <div class="field-error" id="err-and_localFiles">Please enter at least one file path.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <label for="and_rcloneRemote">rclone remote name</label>
+            <div class="hint">
+              The name you gave your Google Drive remote when you ran <code>rclone config</code> in Termux. One-time setup — see the sidebar.<br/>
+              Default remote name is usually <code>gdrive</code>.
+            </div>
+            <input type="text" id="and_rcloneRemote" placeholder="e.g.  gdrive" value="gdrive" />
+            <div class="field-error" id="err-and_rcloneRemote">Please enter your rclone remote name.</div>
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn-generate" onclick="generateAndroid()" style="flex:1;min-width:160px;">⬇ Download sync script</button>
+          <button class="btn-generate" onclick="copyTermuxInstall()" style="flex:1;min-width:160px;background:transparent;border:2px solid var(--accent);color:var(--accent);" title="Copies a single command you can paste straight into Termux — no download, no mv, no chmod needed">📋 Copy Termux command</button>
+        </div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;">
+          <strong>Download</strong> — saves the .sh, then move it into <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">~/.shortcuts/</code> yourself.<br/>
+          <strong>Copy Termux command</strong> — copies one command that writes the script straight into <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">~/.shortcuts/</code> and makes it executable. Just paste it into Termux (long-press → Paste) and press Enter.
+        </div>
+      </div>
+
+
+            <div id="platformLinux" style="display:none">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <label>What do you want to sync?</label>
+            <div class="hint">Pick "specific file(s)" if the game only writes a save file (or a couple of files) rather than a whole folder.</div>
+            <div class="mode-toggle">
+              <label class="mode-option selected" id="linModeOptFolder">
+                <input type="radio" name="linSyncMode" value="folder" checked onchange="setLinuxMode('folder')" />
+                <div class="mode-label">📁 Whole folder</div>
+                <div class="mode-desc">Syncs everything inside a save folder.</div>
+              </label>
+              <label class="mode-option" id="linModeOptFiles">
+                <input type="radio" name="linSyncMode" value="files" onchange="setLinuxMode('files')" />
+                <div class="mode-label">📄 Specific file(s)</div>
+                <div class="mode-desc">Syncs one or more individual files by path.</div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="lin_stepFolder">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <label for="lin_localSave">Local save data folder</label>
+            <div class="hint">
+              The folder (or single file) on your Linux machine that holds the save data.<br/>
+              Common locations: <code>~/.local/share/&lt;Game&gt;</code>, <code>~/.config/&lt;Game&gt;</code>, or via Proton/Wine under <code>~/.steam/steam/steamapps/compatdata/&lt;AppID&gt;/pfx/drive_c/users/steamuser/...</code>.
+            </div>
+            <input type="text" id="lin_localSave"
+                   placeholder='e.g.  /home/you/.local/share/HollowKnight/Saves' />
+            <div class="field-error" id="err-lin_localSave">Please enter the path to your local save data.</div>
+          </div>
+        </div>
+
+        <div class="step" id="lin_stepFiles" style="display:none">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <label for="lin_localFiles">Local file path(s)</label>
+            <div class="hint">One full file path per line. Each file is synced individually before launch and after you finish playing.</div>
+            <textarea id="lin_localFiles" rows="4" placeholder="e.g.&#10;/home/you/.local/share/HollowKnight/save1.dat&#10;/home/you/.local/share/HollowKnight/save2.dat"></textarea>
+            <div class="field-error" id="err-lin_localFiles">Please enter at least one file path.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num optional">3</div>
+          <div class="step-body">
+            <label for="lin_gameProcess">
+              Process name to watch
+              <span class="badge badge-optional">Optional, enables autopilot</span>
+            </label>
+            <div class="hint">
+              The exact process name as it appears in <code>ps</code> or <code>pgrep</code> (e.g. run the game once and check <code>pgrep -l &lt;partial-name&gt;</code>). If set, the script waits for it to start and finish before running the post-game sync automatically.<br/>
+              Leave blank to just press Enter manually when you're done playing.
+            </div>
+            <input type="text" id="lin_gameProcess" placeholder='e.g.  hollow_knight.x86_64' />
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num optional">4</div>
+          <div class="step-body">
+            <label for="lin_gameCmd">
+              Launch command
+              <span class="badge badge-optional">Optional</span>
+            </label>
+            <div class="hint">
+              A command to launch the game automatically (e.g. via Steam: <code>steam steam://rungameid/367520</code>). Leave blank to launch the game yourself after running the script.
+            </div>
+            <input type="text" id="lin_gameCmd" placeholder='e.g.  /home/you/Games/HollowKnight/hollow_knight.x86_64' />
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <label for="lin_rcloneRemote">rclone remote name</label>
+            <div class="hint">
+              The name you gave your Google Drive remote when you ran <code>rclone config</code>. One-time setup — see the sidebar.<br/>
+              Default remote name is usually <code>gdrive</code>.
+            </div>
+            <input type="text" id="lin_rcloneRemote" placeholder="e.g.  gdrive" value="gdrive" />
+            <div class="field-error" id="err-lin_rcloneRemote">Please enter your rclone remote name.</div>
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <button class="btn-generate" onclick="generateLinux()">⬇ Download sync script</button>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;">
+          Downloads <strong>sync_&lt;game&gt;.sh</strong>. Make it executable with <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">chmod +x</code> and run it instead of launching the game directly.
+        </div>
+      </div>
+
+
+      <div class="success-banner" id="successBanner">
+        <span style="font-size:1.2rem">✅</span>
+        <span id="successMsg">Downloaded.</span>
+      </div>
+    </div>
+
+    <div class="preview-wrap" id="previewWrap">
+      <div class="preview-header">
+        <span>Generated script preview</span>
+        <button class="btn-copy" id="copyBtn" onclick="copyScript()">Copy</button>
+      </div>
+      <pre id="scriptPreview" onclick="selectElementText(this)" title="Tap to select all"></pre>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;">
+        If the Copy button doesn't work, tap the box above to select everything, then use your device's copy option.
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+        <div id="sidebarWindows">
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">Requirements</div>
+        <div class="tip-block">
+          <h3>🐍 Python 3.8+</h3>
+          <p><a href="https://www.python.org/downloads/" target="_blank" style="color:var(--accent2)">Download Python</a> if you haven't already. Make sure to check <em>"Add Python to PATH"</em> during install.</p>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <h3>📦 Google API packages</h3>
+          <p>Run this once in a terminal before running any script:</p>
+          <p style="margin-top:8px"><code>pip install google-api-python-client google-auth-oauthlib</code></p>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <h3>☁️ Google Cloud project</h3>
+          <p>A free Google Cloud project with the Drive API enabled. See the setup guide below — takes about 5 minutes, once.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">Getting Your credentials.json</div>
+        <div class="tip-block">
+          <ol>
+            <li>Go to <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--accent2)">console.cloud.google.com</a></li>
+            <li>Create a new project (e.g. <em>Cloud Save Sync</em>)</li>
+            <li><strong>APIs &amp; Services → Library</strong>, search <em>Google Drive API</em>, enable it</li>
+            <li><strong>OAuth consent screen</strong> → <em>External</em> → fill in an app name → save</li>
+            <li><strong>Credentials → Create Credentials → OAuth 2.0 Client ID</strong></li>
+            <li>Choose <strong>Desktop app</strong> → create</li>
+            <li>Click <strong>Download JSON</strong></li>
+            <li>Paste its contents into the credentials field above</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">First-Time Sign-In</div>
+        <div class="tip-block">
+          <p style="color:var(--text);font-size:0.85rem;line-height:1.7">
+            The first time you run a generated script, a <strong>browser window will open</strong> asking you to sign in to Google. After you approve, a <code>cloudsavesync_token.json</code> file is saved next to the script — every run after that is automatic.
+          </p>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <h3>📁 The Drive folder must already exist</h3>
+          <p>Create it in Drive first, then paste its link in the shared field above.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">How to Use the Script</div>
+        <div class="tip-block">
+          <p style="color:var(--text);font-size:0.85rem;line-height:1.7">
+            1. Download the generated <code>.py</code> (or built <code>.exe</code>).<br/>
+            2. Run it instead of launching your game normally.<br/>
+            3. It syncs, launches the game, watches it, syncs again when you quit.<br/>
+            4. After a clean post-game sync the window closes by itself. If anything failed, it stays open so you can read the error.
+          </p>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <h3>↑ Re-import a built .exe</h3>
+          <p>Lost the settings? Use <strong>Import script / .exe</strong> and pick an exe this page built — it reads the game name, paths, Drive folder and credentials back out of it, so you can tweak and rebuild without retyping.</p>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <h3>🎯 Exe vs Shortcut</h3>
+          <p>Exe alone works for standalone games. Add the shortcut too if a launcher (Steam, Epic…) needs to start first — the exe field should still point at the real game binary so the script knows when it truly closes.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Finding Save Locations</div>
+        <div class="tip-block">
+          <ul>
+            <li><code>%AppData%\Roaming\&lt;Game&gt;</code></li>
+            <li><code>%UserProfile%\Documents\My Games</code></li>
+            <li><code>%UserProfile%\Saved Games</code></li>
+            <li>Inside the game install folder itself</li>
+          </ul>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <p>Or search <a href="https://www.pcgamingwiki.com" target="_blank" style="color:var(--accent2)">pcgamingwiki.com</a> for the exact location.</p>
+        </div>
+      </div>
+    </div>
+
+        <div id="sidebarAndroid" style="display:none">
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">One-time setup</div>
+        <div class="tip-block">
+          <h3>📲 Install Termux</h3>
+          <p>Get it from <strong>F-Droid</strong> (not the Play Store version, which is outdated and unmaintained).</p>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <h3>💾 Grant storage access</h3>
+          <p>In Termux, run:</p>
+          <p><code>termux-setup-storage</code></p>
+          <p>and allow the permission prompt.</p>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <h3>📦 Install rclone + coreutils</h3>
+          <p><code>pkg update && pkg install rclone coreutils findutils</code></p>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <h3>🔗 Connect Google Drive</h3>
+          <p>Run <code>rclone config</code>, choose <em>New remote</em>, name it (e.g. <code>gdrive</code>), pick <em>Google Drive</em>, follow the sign-in flow. Use that same name in the form.</p>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <h3>📁 The Drive folder must already exist</h3>
+          <p>Create it in Drive first, then paste its link in the shared field above.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">Make it one tap</div>
+        <div class="tip-block">
+          <h3>🧩 Termux:Widget</h3>
+          <ol>
+            <li>Install the <strong>Termux:Widget</strong> app.</li>
+            <li>Move the downloaded script into <code>~/.shortcuts/</code>.</li>
+            <li>Make it executable: <code>chmod +x ~/.shortcuts/*.sh</code></li>
+            <li>Add the widget to your home screen. Tap before playing, tap again after — it auto-detects direction each time.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Good to know</div>
+        <div class="tip-block">
+          <p>On Android 11+, apps can't read each other's private data folders without root — so <strong>native app/game saves</strong> only work if the game writes to shared storage, or your device is rooted.</p>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <p><strong>Emulator saves</strong> almost always live in shared storage already.</p>
+        </div>
+      </div>
+    </div>
+
+        <div id="sidebarLinux" style="display:none">
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">One-time setup</div>
+        <div class="tip-block">
+          <h3>📦 Install rclone</h3>
+          <p><code>curl https://rclone.org/install.sh | sudo bash</code></p>
+          <p>or use your distro's package manager (e.g. <code>sudo apt install rclone</code>, <code>sudo pacman -S rclone</code>).</p>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <h3>🔗 Connect Google Drive</h3>
+          <p>Run <code>rclone config</code>, choose <em>New remote</em>, name it (e.g. <code>gdrive</code>), pick <em>Google Drive</em>, and follow the browser sign-in flow (rclone opens it automatically on desktop Linux). Use that same name in the form.</p>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <h3>📁 The Drive folder must already exist</h3>
+          <p>Create it in Drive first, then paste its link in the shared field above.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">How to use the script</div>
+        <div class="tip-block">
+          <p style="color:var(--text);font-size:0.85rem;line-height:1.7">
+            1. Download the generated <code>.sh</code> file.<br/>
+            2. Make it executable: <code>chmod +x sync_&lt;game&gt;.sh</code><br/>
+            3. Run it (<code>./sync_&lt;game&gt;.sh</code>) instead of launching your game directly.
+          </p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">Autopilot vs manual</div>
+        <div class="tip-block">
+          <h3>🎯 With a process name set</h3>
+          <p>The script waits for that process to appear, watches it, and runs the post-game sync automatically the moment it exits — same experience as the Windows version.</p>
+        </div>
+        <hr class="divider" />
+        <div class="tip-block">
+          <h3>⌨️ Without one</h3>
+          <p>The script does the pre-launch sync, then just waits at a prompt — press Enter once you've finished playing to trigger the post-game sync.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Finding the process name</div>
+        <div class="tip-block">
+          <p>Launch the game once manually, then in another terminal run:</p>
+          <p style="margin-top:8px"><code>pgrep -la &lt;part of the game's name&gt;</code></p>
+          <p style="margin-top:8px">The second column of the output is the exact process name to use.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+const TEMPLATE_WIN = `import os
+import re
+import json
+import socket
+import subprocess
+import sys
+import time
+import tempfile
+import io
+from datetime import datetime
+
+# ── Configuration ────────────────────────────────────────────────────────────
+GAME_NAME         = "{{GAME_NAME}}"
+GAME_EXE          = r"{{GAME_EXE}}"        # Required — used to detect the running process
+GAME_SHORTCUT     = r"{{GAME_SHORTCUT}}"   # Optional — used to launch the game
+LOCAL_SAVE        = r"{{LOCAL_SAVE}}"      # Local save folder (used when LOCAL_FILES is empty)
+LOCAL_FILES        = [
+{{LOCAL_FILES_PY}}
+]                                           # Specific file(s) to sync instead of a whole folder — leave empty to use LOCAL_SAVE
+DRIVE_FOLDER_LINK = "{{DRIVE_FOLDER}}"     # Link (or ID) of an existing folder in your Google Drive
+
+# Embedded OAuth credentials (from Google Cloud Console — credentials.json)
+_CREDS_JSON = r"""{{CREDENTIALS_JSON}}"""
+
+SCOPES      = ["https://www.googleapis.com/auth/drive"]
+# When bundled into a PyInstaller onefile .exe, __file__ resolves to a
+# temporary extraction folder that's wiped after every run — using it would
+# mean the saved token (and the sign-in it avoids) gets lost every time.
+# sys.executable is the real, stable location of the .exe in that case.
+if getattr(sys, "frozen", False):
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+TOKEN_PATH  = os.path.join(SCRIPT_DIR, "cloudsavesync_token.json")
+
+STARTUP_TIMEOUT = 60   # seconds to wait for the game process to appear after launch
+POLL_INTERVAL   = 3    # seconds between process-running checks
+AUTO_CLOSE_SECONDS = 3 # after a clean post-game sync, the window closes by itself after this delay
+# ─────────────────────────────────────────────────────────────────────────────
+
+_errors = []   # anything that went wrong this run — keeps the window open at the end
+
+
+def log(msg):
+    print(f"[Cloud Save Sync] {msg}", flush=True)
+
+
+def check_deps():
+    """Exit with a helpful message if Google API packages are not installed."""
+    missing = []
+    try:
+        import googleapiclient  # noqa: F401
+    except ImportError:
+        missing.append("google-api-python-client")
+    try:
+        import google_auth_oauthlib  # noqa: F401
+    except ImportError:
+        missing.append("google-auth-oauthlib")
+    if missing:
+        log("ERROR: Missing required Python packages.")
+        log("Run this command in a terminal, then try again:")
+        log("  pip install google-api-python-client google-auth-oauthlib")
+        input("Press Enter to close...")
+        raise SystemExit(1)
+
+
+def has_internet():
+    """Return True if we can reach Google's DNS server."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(3)
+        s.connect(("8.8.8.8", 53))
+        s.close()
+        return True
+    except OSError:
+        return False
+
+
+def is_running(exe_name):
+    """Return True if a process with the given filename is currently running."""
+    result = subprocess.run(
+        ["tasklist", "/fi", f"imagename eq {exe_name}", "/fo", "csv", "/nh"],
+        capture_output=True, text=True
+    )
+    return exe_name.lower() in result.stdout.lower()
+
+
+# ── Google Drive helpers ──────────────────────────────────────────────────────
+
+def get_service():
+    """Authenticate and return a Google Drive API service object."""
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from google.auth.transport.requests import Request
+    from googleapiclient.discovery import build
+
+    creds = None
+    if os.path.exists(TOKEN_PATH):
+        creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            log("Refreshing Google auth token...")
+            creds.refresh(Request())
+        else:
+            log("Opening browser for Google sign-in (first-time only)...")
+            tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+            tmp.write(_CREDS_JSON)
+            tmp.close()
+            try:
+                flow = InstalledAppFlow.from_client_secrets_file(tmp.name, SCOPES)
+                creds = flow.run_local_server(port=0)
+            finally:
+                os.unlink(tmp.name)
+        with open(TOKEN_PATH, "w") as f:
+            f.write(creds.to_json())
+
+    return build("drive", "v3", credentials=creds)
+
+
+def resolve_folder_id(service, link_or_id):
+    """Pull a folder ID out of a Drive link (or accept a raw ID directly),
+    then confirm the folder exists and is reachable with this account.
+    Returns (folder_id, folder_name), or (None, None) on failure."""
+    s = (link_or_id or "").strip()
+    m = re.search(r'/folders/([a-zA-Z0-9_-]+)', s)
+    if not m:
+        m = re.search(r'[?&]id=([a-zA-Z0-9_-]+)', s)
+    folder_id = m.group(1) if m else s
+    try:
+        meta = service.files().get(fileId=folder_id, fields="id, name, mimeType").execute()
+    except Exception as e:
+        log(f"ERROR: Couldn't open that Drive folder ({e}).")
+        log("Check the link is correct and that it's shared with this Google account.")
+        return None, None
+    if meta.get("mimeType") != "application/vnd.google-apps.folder":
+        log("ERROR: That link doesn't point to a folder.")
+        return None, None
+    return folder_id, meta.get("name", folder_id)
+
+
+def latest_drive_mtime(service, folder_id):
+    """Return the most recent modifiedTime (as float timestamp) across all
+    files in a Drive folder tree. Returns 0.0 if the folder is empty."""
+    latest = 0.0
+    page_token = None
+    while True:
+        kwargs = dict(
+            q=f"'{folder_id}' in parents and trashed=false",
+            fields="nextPageToken, files(id, mimeType, modifiedTime)"
+        )
+        if page_token:
+            kwargs["pageToken"] = page_token
+        res = service.files().list(**kwargs).execute()
+        for f in res.get("files", []):
+            if f["mimeType"] == "application/vnd.google-apps.folder":
+                t = latest_drive_mtime(service, f["id"])
+            else:
+                dt = datetime.fromisoformat(f["modifiedTime"].replace("Z", "+00:00"))
+                t = dt.timestamp()
+            if t > latest:
+                latest = t
+        page_token = res.get("nextPageToken")
+        if not page_token:
+            break
+    return latest
+
+
+def latest_local_mtime(path):
+    """Return the most recent modification timestamp in a file or folder tree."""
+    if not os.path.exists(path):
+        return 0.0
+    if os.path.isfile(path):
+        return os.path.getmtime(path)
+    latest = 0.0
+    for root, _, files in os.walk(path):
+        for fname in files:
+            try:
+                t = os.path.getmtime(os.path.join(root, fname))
+                if t > latest:
+                    latest = t
+            except OSError:
+                pass
+    return latest
+
+
+def fmt_time(ts):
+    if ts == 0.0:
+        return "not found"
+    return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+
+
+_SKIP_NAMES = {"desktop.ini", "thumbs.db", ".ds_store", "$recycle.bin"}
+
+def download_saves(service, folder_id, local_path):
+    """Download all files from a Drive folder into local_path."""
+    from googleapiclient.http import MediaIoBaseDownload
+
+    def dl_folder(fid, local_dir):
+        os.makedirs(local_dir, exist_ok=True)
+        res = service.files().list(
+            q=f"'{fid}' in parents and trashed=false",
+            fields="files(id, name, mimeType)"
+        ).execute()
+        for f in res.get("files", []):
+            if f["name"].lower() in _SKIP_NAMES:
+                continue
+            dest = os.path.join(local_dir, f["name"])
+            if f["mimeType"] == "application/vnd.google-apps.folder":
+                dl_folder(f["id"], dest)
+            else:
+                req = service.files().get_media(fileId=f["id"])
+                with open(dest, "wb") as fh:
+                    dl = MediaIoBaseDownload(fh, req)
+                    done = False
+                    while not done:
+                        _, done = dl.next_chunk()
+
+    if os.path.isfile(local_path):
+        # LOCAL_SAVE is a single file — find matching file in Drive folder
+        fname = os.path.basename(local_path)
+        safe = fname.replace("'", "\\\\'")
+        q = f"name='{safe}' and '{folder_id}' in parents and trashed=false"
+        res = service.files().list(q=q, fields="files(id)").execute()
+        items = res.get("files", [])
+        if items:
+            req = service.files().get_media(fileId=items[0]["id"])
+            parent_dir = os.path.dirname(local_path)
+            if parent_dir:
+                os.makedirs(parent_dir, exist_ok=True)
+            with open(local_path, "wb") as fh:
+                dl = MediaIoBaseDownload(fh, req)
+                done = False
+                while not done:
+                    _, done = dl.next_chunk()
+    else:
+        dl_folder(folder_id, local_path)
+
+
+def upload_saves(service, local_path, folder_id):
+    """Upload local_path (file or folder tree) to a Drive folder."""
+    from googleapiclient.http import MediaFileUpload
+
+    def upsert_file(file_path, parent_id):
+        name = os.path.basename(file_path)
+        safe = name.replace("'", "\\\\'")
+        q = f"name='{safe}' and '{parent_id}' in parents and trashed=false"
+        res = service.files().list(q=q, fields="files(id)").execute()
+        existing = res.get("files", [])
+        media = MediaFileUpload(file_path, resumable=True)
+        if existing:
+            service.files().update(fileId=existing[0]["id"], media_body=media).execute()
+        else:
+            service.files().create(
+                body={"name": name, "parents": [parent_id]},
+                media_body=media, fields="id"
+            ).execute()
+
+    def ul_folder(local_dir, parent_id):
+        for item in os.listdir(local_dir):
+            if item.lower() in _SKIP_NAMES:
+                continue
+            item_path = os.path.join(local_dir, item)
+            if os.path.isdir(item_path):
+                safe = item.replace("'", "\\\\'")
+                q = (f"name='{safe}' and "
+                     f"mimeType='application/vnd.google-apps.folder' and "
+                     f"'{parent_id}' in parents and trashed=false")
+                res = service.files().list(q=q, fields="files(id)").execute()
+                existing = res.get("files", [])
+                if existing:
+                    sub_id = existing[0]["id"]
+                else:
+                    meta = {
+                        "name": item,
+                        "mimeType": "application/vnd.google-apps.folder",
+                        "parents": [parent_id]
+                    }
+                    sub = service.files().create(body=meta, fields="id").execute()
+                    sub_id = sub["id"]
+                ul_folder(item_path, sub_id)
+            else:
+                upsert_file(item_path, parent_id)
+
+    if os.path.isfile(local_path):
+        upsert_file(local_path, folder_id)
+    else:
+        ul_folder(local_path, folder_id)
+
+
+# ── Sync logic ────────────────────────────────────────────────────────────────
+
+def drive_file_mtime(service, folder_id, filename):
+    """Return the modified time of a specific file inside folder_id, or 0.0 if absent."""
+    safe = filename.replace("'", "\\\\'")
+    q = f"name='{safe}' and '{folder_id}' in parents and trashed=false"
+    res = service.files().list(q=q, fields="files(id, modifiedTime)").execute()
+    items = res.get("files", [])
+    if not items:
+        return 0.0
+    ts = items[0]["modifiedTime"].split(".")[0] + "Z"
+    return datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").timestamp()
+
+
+def sync_one_file(service, folder_id, file_path):
+    fname = os.path.basename(file_path)
+    local_t = latest_local_mtime(file_path)
+    cloud_t = drive_file_mtime(service, folder_id, fname)
+    log(f"  {fname}  local={fmt_time(local_t)}  cloud={fmt_time(cloud_t)}")
+    if cloud_t > local_t:
+        try:
+            download_saves(service, folder_id, file_path)
+        except Exception as e:
+            log(f"  ERROR downloading {fname}: {e}")
+            _errors.append(e)
+    elif local_t > cloud_t:
+        try:
+            upload_saves(service, file_path, folder_id)
+        except Exception as e:
+            log(f"  ERROR uploading {fname}: {e}")
+            _errors.append(e)
+
+
+def sync(service, folder_id, phase):
+    log(f"--- {phase} ---")
+
+    if LOCAL_FILES:
+        for file_path in LOCAL_FILES:
+            sync_one_file(service, folder_id, file_path)
+        return
+
+    local_t = latest_local_mtime(LOCAL_SAVE)
+    cloud_t = latest_drive_mtime(service, folder_id)
+    log(f"Local : {fmt_time(local_t)}")
+    log(f"Cloud : {fmt_time(cloud_t)}")
+
+    if cloud_t > local_t:
+        log("Cloud save is newer. Downloading to local...")
+        try:
+            download_saves(service, folder_id, LOCAL_SAVE)
+            log("Download complete.")
+        except Exception as e:
+            log(f"ERROR during download: {e}")
+            _errors.append(e)
+            if phase.startswith("Pre"):
+                input("Press Enter to continue anyway...")
+    elif local_t > cloud_t:
+        log("Local save is newer. Uploading to cloud...")
+        try:
+            upload_saves(service, LOCAL_SAVE, folder_id)
+            log("Upload complete.")
+        except Exception as e:
+            log(f"ERROR during upload: {e}")
+            _errors.append(e)
+            if phase.startswith("Pre"):
+                input("Press Enter to continue anyway...")
+    else:
+        log("Saves are already in sync. Nothing to do.")
+
+
+# ── Game launch / watch ───────────────────────────────────────────────────────
+
+def launch_game():
+    """Launch the game via shortcut if configured, otherwise via the exe."""
+    if GAME_SHORTCUT:
+        log(f"Launching via shortcut: {GAME_SHORTCUT}")
+        subprocess.Popen(["cmd", "/c", "start", "", GAME_SHORTCUT])
+    else:
+        log(f"Launching: {GAME_EXE}")
+        subprocess.Popen([GAME_EXE])
+
+
+def wait_for_game():
+    """Wait for the game exe process to start, then wait for it to stop."""
+    exe_name = os.path.basename(GAME_EXE)
+    log(f"Waiting for process '{exe_name}' to appear...")
+    deadline = time.time() + STARTUP_TIMEOUT
+    while not is_running(exe_name):
+        if time.time() > deadline:
+            log(f"WARNING: '{exe_name}' did not appear within {STARTUP_TIMEOUT}s.")
+            log("The game may still be running. Press Ctrl+C when done playing to trigger a sync.")
+            try:
+                while True:
+                    time.sleep(5)
+            except KeyboardInterrupt:
+                pass
+            return
+        time.sleep(1)
+
+    log(f"Game is running. Watching process '{exe_name}'...")
+    while is_running(exe_name):
+        time.sleep(POLL_INTERVAL)
+    log("Game process has ended.")
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def main():
+    check_deps()
+    log(f"=== {GAME_NAME} — Cloud Save Sync ===")
+    print()
+
+    if not has_internet():
+        log("No network connection detected. Skipping pre-launch sync.")
+        launch_game()
+        wait_for_game()
+        print()
+        log("No network connection detected. Skipping post-game sync.")
+        print()
+        log("All done. Goodbye!")
+        input("Press Enter to close this window...")
+        return
+
+    log("Connecting to Google Drive...")
+    try:
+        service = get_service()
+    except Exception as e:
+        log(f"ERROR connecting to Google Drive: {e}")
+        input("Press Enter to close this window...")
+        return
+
+    folder_id, folder_name = resolve_folder_id(service, DRIVE_FOLDER_LINK)
+    if folder_id is None:
+        input("Press Enter to close this window...")
+        return
+    log(f"Drive folder ready: {folder_name}")
+
+    print()
+    sync(service, folder_id, "Pre-launch sync")
+    print()
+    launch_game()
+    wait_for_game()
+    print()
+    sync(service, folder_id, "Post-game sync")
+    print()
+    if _errors:
+        # Something failed — stay open so the error can actually be read.
+        log(f"Finished with {len(_errors)} error(s) — see above. Your saves may not be fully synced.")
+        input("Press Enter to close this window...")
+    else:
+        log(f"All done. Closing in {AUTO_CLOSE_SECONDS} seconds...")
+        time.sleep(AUTO_CLOSE_SECONDS)
+
+
+if __name__ == "__main__":
+    main()
+`;
+
+const TEMPLATE_ANDROID_FOLDER = `#!/data/data/com.termux/files/usr/bin/bash
+# {{GAME_NAME}} — Cloud Save Sync (Android / Termux)
+# Compares local vs Google Drive and syncs whichever side is newer.
+# Run this before playing, and again after — same logic as the PC version.
+
+REMOTE="{{RCLONE_REMOTE}}"
+LOCAL_SAVE="{{LOCAL_SAVE}}"
+DRIVE_LINK="{{DRIVE_FOLDER}}"
+
+log() { echo "[$(date '+%H:%M:%S')] $1"; }
+
+echo "=== {{GAME_NAME}} — Cloud Save Sync ==="
+
+if ! command -v rclone >/dev/null 2>&1; then
+    log "ERROR: rclone not found. Run: pkg install rclone"
+    read -p "Press Enter to close..."
+    exit 1
+fi
+
+# Pull the folder ID out of the pasted Drive link (also accepts a raw ID)
+FOLDER_ID=$(echo "$DRIVE_LINK" | grep -oE '/folders/[A-Za-z0-9_-]+' | head -1 | cut -d'/' -f3)
+if [ -z "$FOLDER_ID" ]; then
+    FOLDER_ID=$(echo "$DRIVE_LINK" | grep -oE '[?&]id=[A-Za-z0-9_-]+' | head -1 | cut -d'=' -f2)
+fi
+if [ -z "$FOLDER_ID" ]; then
+    FOLDER_ID=$(echo "$DRIVE_LINK" | tr -d '[:space:]')
+fi
+
+# --drive-root-folder-id treats that folder as the root, so "$REMOTE:" (no
+# extra path) always refers to it — this is what lets us skip typing a path.
+RCLONE=(rclone --drive-root-folder-id="$FOLDER_ID")
+REMOTE_PATH="$REMOTE:"
+
+mkdir -p "$LOCAL_SAVE"
+
+# Latest local modification time (epoch seconds -> UTC ISO8601, string-sortable)
+local_epoch=$(find "$LOCAL_SAVE" -type f -exec stat -c '%Y' {} \\; 2>/dev/null | sort -n | tail -1)
+local_epoch=\${local_epoch:-0}
+local_iso=$(date -u -d "@$local_epoch" +%Y-%m-%dT%H:%M:%SZ)
+
+# Latest cloud modification time (already UTC ISO8601 from rclone)
+cloud_iso=$("\${RCLONE[@]}" lsjson --recursive "$REMOTE_PATH" 2>/dev/null | grep -o '"ModTime":"[^"]*"' | cut -d'"' -f4 | sort | tail -1)
+cloud_iso=\${cloud_iso:-"1970-01-01T00:00:00Z"}
+
+log "Local : $local_iso"
+log "Cloud : $cloud_iso"
+
+if [[ "$cloud_iso" > "$local_iso" ]]; then
+    log "Cloud save is newer. Downloading to local..."
+    if "\${RCLONE[@]}" copy "$REMOTE_PATH" "$LOCAL_SAVE" --update -v; then
+        log "Download complete."
+    else
+        log "ERROR during download. Check the Drive link and your rclone remote."
+    fi
+elif [[ "$local_iso" > "$cloud_iso" ]]; then
+    log "Local save is newer. Uploading to cloud..."
+    if "\${RCLONE[@]}" copy "$LOCAL_SAVE" "$REMOTE_PATH" --update -v; then
+        log "Upload complete."
+    else
+        log "ERROR during upload. Check the Drive link and your rclone remote."
+    fi
+else
+    log "Saves are already in sync. Nothing to do."
+fi
+
+read -p "Press Enter to close..."
+`;
+
+const TEMPLATE_ANDROID_FILES = `#!/data/data/com.termux/files/usr/bin/bash
+# {{GAME_NAME}} — Cloud Save Sync (Android / Termux)
+# Syncs specific file(s) individually — for each file, compares local vs
+# Drive and syncs whichever side is newer. Run before playing and after.
+
+REMOTE="{{RCLONE_REMOTE}}"
+DRIVE_LINK="{{DRIVE_FOLDER}}"
+
+# One local file path per line
+LOCAL_FILES=(
+{{LOCAL_FILES}}
+)
+
+log() { echo "[$(date '+%H:%M:%S')] $1"; }
+
+echo "=== {{GAME_NAME}} — Cloud Save Sync (files) ==="
+
+if ! command -v rclone >/dev/null 2>&1; then
+    log "ERROR: rclone not found. Run: pkg install rclone"
+    read -p "Press Enter to close..."
+    exit 1
+fi
+
+# Pull the folder ID out of the pasted Drive link (also accepts a raw ID)
+FOLDER_ID=$(echo "$DRIVE_LINK" | grep -oE '/folders/[A-Za-z0-9_-]+' | head -1 | cut -d'/' -f3)
+if [ -z "$FOLDER_ID" ]; then
+    FOLDER_ID=$(echo "$DRIVE_LINK" | grep -oE '[?&]id=[A-Za-z0-9_-]+' | head -1 | cut -d'=' -f2)
+fi
+if [ -z "$FOLDER_ID" ]; then
+    FOLDER_ID=$(echo "$DRIVE_LINK" | tr -d '[:space:]')
+fi
+
+RCLONE=(rclone --drive-root-folder-id="$FOLDER_ID")
+REMOTE_PATH="$REMOTE:"
+
+for LOCAL_FILE in "\${LOCAL_FILES[@]}"; do
+    [ -z "$LOCAL_FILE" ] && continue
+    FILENAME=$(basename "$LOCAL_FILE")
+    LOCAL_DIR=$(dirname "$LOCAL_FILE")
+    mkdir -p "$LOCAL_DIR"
+
+    log "--- $FILENAME ---"
+
+    if [ -f "$LOCAL_FILE" ]; then
+        local_epoch=$(stat -c '%Y' "$LOCAL_FILE" 2>/dev/null)
+    else
+        local_epoch=0
+    fi
+    local_iso=$(date -u -d "@\${local_epoch:-0}" +%Y-%m-%dT%H:%M:%SZ)
+
+    cloud_iso=$("\${RCLONE[@]}" lsjson "$REMOTE_PATH" --files-only --include "/$FILENAME" 2>/dev/null | grep -o '"ModTime":"[^"]*"' | cut -d'"' -f4 | head -1)
+    cloud_iso=\${cloud_iso:-"1970-01-01T00:00:00Z"}
+
+    log "Local : $local_iso"
+    log "Cloud : $cloud_iso"
+
+    if [[ "$cloud_iso" > "$local_iso" ]]; then
+        log "Cloud copy is newer. Downloading..."
+        if "\${RCLONE[@]}" copyto "\${REMOTE_PATH}$FILENAME" "$LOCAL_FILE" -v; then
+            log "Download complete."
+        else
+            log "ERROR during download of $FILENAME."
+        fi
+    elif [[ "$local_iso" > "$cloud_iso" ]]; then
+        log "Local copy is newer. Uploading..."
+        if "\${RCLONE[@]}" copyto "$LOCAL_FILE" "\${REMOTE_PATH}$FILENAME" -v; then
+            log "Upload complete."
+        else
+            log "ERROR during upload of $FILENAME."
+        fi
+    else
+        log "Already in sync."
+    fi
+done
+
+log "All files processed."
+read -p "Press Enter to close..."
+`;
+
+const TEMPLATE_LINUX_FOLDER = `#!/usr/bin/env bash
+# {{GAME_NAME}} — Cloud Save Sync (Linux)
+# Pre-launch sync -> launch/watch the game -> post-game sync.
+# Requires rclone (https://rclone.org) configured with a Google Drive remote.
+
+REMOTE="{{RCLONE_REMOTE}}"
+LOCAL_SAVE="{{LOCAL_SAVE}}"
+DRIVE_LINK="{{DRIVE_FOLDER}}"
+GAME_PROCESS="{{GAME_PROCESS}}"   # Process name to watch for (leave empty to skip autopilot)
+GAME_CMD="{{GAME_CMD}}"           # Optional command to launch the game automatically
+
+STARTUP_TIMEOUT=60
+POLL_INTERVAL=3
+
+log() { echo "[$(date '+%H:%M:%S')] $1"; }
+
+if ! command -v rclone >/dev/null 2>&1; then
+    log "ERROR: rclone not found. Install it from https://rclone.org/install/"
+    exit 1
+fi
+
+# Pull the folder ID out of the pasted Drive link (also accepts a raw ID)
+FOLDER_ID=$(echo "$DRIVE_LINK" | grep -oE '/folders/[A-Za-z0-9_-]+' | head -1 | cut -d'/' -f3)
+if [ -z "$FOLDER_ID" ]; then
+    FOLDER_ID=$(echo "$DRIVE_LINK" | grep -oE '[?&]id=[A-Za-z0-9_-]+' | head -1 | cut -d'=' -f2)
+fi
+if [ -z "$FOLDER_ID" ]; then
+    FOLDER_ID=$(echo "$DRIVE_LINK" | tr -d '[:space:]')
+fi
+
+RCLONE=(rclone --drive-root-folder-id="$FOLDER_ID")
+REMOTE_PATH="$REMOTE:"
+
+sync_pass() {
+    local phase="$1"
+    log "--- $phase ---"
+    mkdir -p "$LOCAL_SAVE"
+
+    local_epoch=$(find "$LOCAL_SAVE" -type f -exec stat -c '%Y' {} \\; 2>/dev/null | sort -n | tail -1)
+    local_epoch=\${local_epoch:-0}
+    local_iso=$(date -u -d "@$local_epoch" +%Y-%m-%dT%H:%M:%SZ)
+
+    cloud_iso=$("\${RCLONE[@]}" lsjson --recursive "$REMOTE_PATH" 2>/dev/null | grep -o '"ModTime":"[^"]*"' | cut -d'"' -f4 | sort | tail -1)
+    cloud_iso=\${cloud_iso:-"1970-01-01T00:00:00Z"}
+
+    log "Local : $local_iso"
+    log "Cloud : $cloud_iso"
+
+    if [[ "$cloud_iso" > "$local_iso" ]]; then
+        log "Cloud save is newer. Downloading to local..."
+        "\${RCLONE[@]}" copy "$REMOTE_PATH" "$LOCAL_SAVE" --update -v
+    elif [[ "$local_iso" > "$cloud_iso" ]]; then
+        log "Local save is newer. Uploading to cloud..."
+        "\${RCLONE[@]}" copy "$LOCAL_SAVE" "$REMOTE_PATH" --update -v
+    else
+        log "Already in sync."
+    fi
+}
+
+wait_for_game() {
+    if [ -z "$GAME_PROCESS" ]; then
+        log "No process name set — press Enter once you've finished playing to run the post-game sync."
+        read -r
+        return
+    fi
+    log "Waiting for process '$GAME_PROCESS' to appear..."
+    deadline=$(( $(date +%s) + STARTUP_TIMEOUT ))
+    while ! pgrep -x "$GAME_PROCESS" >/dev/null 2>&1; do
+        if [ "$(date +%s)" -gt "$deadline" ]; then
+            log "WARNING: '$GAME_PROCESS' did not appear within \${STARTUP_TIMEOUT}s."
+            log "The game may still be running under a different name. Press Enter when done playing."
+            read -r
+            return
+        fi
+        sleep 1
+    done
+    log "Game is running. Watching process '$GAME_PROCESS'..."
+    while pgrep -x "$GAME_PROCESS" >/dev/null 2>&1; do
+        sleep "$POLL_INTERVAL"
+    done
+    log "Game process has ended."
+}
+
+echo "=== {{GAME_NAME}} — Cloud Save Sync ==="
+
+sync_pass "Pre-launch sync"
+
+if [ -n "$GAME_CMD" ]; then
+    log "Launching: $GAME_CMD"
+    nohup $GAME_CMD >/dev/null 2>&1 &
+    disown
+else
+    log "Launch the game yourself now."
+fi
+
+wait_for_game
+sync_pass "Post-game sync"
+
+log "All done."
+
+`;
+
+const TEMPLATE_LINUX_FILES = `#!/usr/bin/env bash
+# {{GAME_NAME}} — Cloud Save Sync (Linux)
+# Syncs specific file(s) individually before launch and after you finish
+# playing. Requires rclone (https://rclone.org) with a Google Drive remote.
+
+REMOTE="{{RCLONE_REMOTE}}"
+DRIVE_LINK="{{DRIVE_FOLDER}}"
+GAME_PROCESS="{{GAME_PROCESS}}"   # Process name to watch for (leave empty to skip autopilot)
+GAME_CMD="{{GAME_CMD}}"           # Optional command to launch the game automatically
+
+# One local file path per line
+LOCAL_FILES=(
+{{LOCAL_FILES}}
+)
+
+STARTUP_TIMEOUT=60
+POLL_INTERVAL=3
+
+log() { echo "[$(date '+%H:%M:%S')] $1"; }
+
+if ! command -v rclone >/dev/null 2>&1; then
+    log "ERROR: rclone not found. Install it from https://rclone.org/install/"
+    exit 1
+fi
+
+FOLDER_ID=$(echo "$DRIVE_LINK" | grep -oE '/folders/[A-Za-z0-9_-]+' | head -1 | cut -d'/' -f3)
+if [ -z "$FOLDER_ID" ]; then
+    FOLDER_ID=$(echo "$DRIVE_LINK" | grep -oE '[?&]id=[A-Za-z0-9_-]+' | head -1 | cut -d'=' -f2)
+fi
+if [ -z "$FOLDER_ID" ]; then
+    FOLDER_ID=$(echo "$DRIVE_LINK" | tr -d '[:space:]')
+fi
+
+RCLONE=(rclone --drive-root-folder-id="$FOLDER_ID")
+REMOTE_PATH="$REMOTE:"
+
+sync_pass() {
+    local phase="$1"
+    log "--- $phase ---"
+    for LOCAL_FILE in "\${LOCAL_FILES[@]}"; do
+        [ -z "$LOCAL_FILE" ] && continue
+        FILENAME=$(basename "$LOCAL_FILE")
+        LOCAL_DIR=$(dirname "$LOCAL_FILE")
+        mkdir -p "$LOCAL_DIR"
+
+        if [ -f "$LOCAL_FILE" ]; then
+            local_epoch=$(stat -c '%Y' "$LOCAL_FILE" 2>/dev/null)
+        else
+            local_epoch=0
+        fi
+        local_iso=$(date -u -d "@\${local_epoch:-0}" +%Y-%m-%dT%H:%M:%SZ)
+
+        cloud_iso=$("\${RCLONE[@]}" lsjson "$REMOTE_PATH" --files-only --include "/$FILENAME" 2>/dev/null | grep -o '"ModTime":"[^"]*"' | cut -d'"' -f4 | head -1)
+        cloud_iso=\${cloud_iso:-"1970-01-01T00:00:00Z"}
+
+        log "  $FILENAME  local=$local_iso  cloud=$cloud_iso"
+
+        if [[ "$cloud_iso" > "$local_iso" ]]; then
+            "\${RCLONE[@]}" copyto "\${REMOTE_PATH}$FILENAME" "$LOCAL_FILE" -v
+        elif [[ "$local_iso" > "$cloud_iso" ]]; then
+            "\${RCLONE[@]}" copyto "$LOCAL_FILE" "\${REMOTE_PATH}$FILENAME" -v
+        fi
+    done
+}
+
+wait_for_game() {
+    if [ -z "$GAME_PROCESS" ]; then
+        log "No process name set — press Enter once you've finished playing to run the post-game sync."
+        read -r
+        return
+    fi
+    log "Waiting for process '$GAME_PROCESS' to appear..."
+    deadline=$(( $(date +%s) + STARTUP_TIMEOUT ))
+    while ! pgrep -x "$GAME_PROCESS" >/dev/null 2>&1; do
+        if [ "$(date +%s)" -gt "$deadline" ]; then
+            log "WARNING: '$GAME_PROCESS' did not appear within \${STARTUP_TIMEOUT}s."
+            log "The game may still be running under a different name. Press Enter when done playing."
+            read -r
+            return
+        fi
+        sleep 1
+    done
+    log "Game is running. Watching process '$GAME_PROCESS'..."
+    while pgrep -x "$GAME_PROCESS" >/dev/null 2>&1; do
+        sleep "$POLL_INTERVAL"
+    done
+    log "Game process has ended."
+}
+
+echo "=== {{GAME_NAME}} — Cloud Save Sync (files) ==="
+
+sync_pass "Pre-launch sync"
+
+if [ -n "$GAME_CMD" ]; then
+    log "Launching: $GAME_CMD"
+    nohup $GAME_CMD >/dev/null 2>&1 &
+    disown
+else
+    log "Launch the game yourself now."
+fi
+
+wait_for_game
+sync_pass "Post-game sync"
+
+log "All done."
+
+`;
+
+// ── Shared state ──────────────────────────────────────────────────────────────
+let currentPlatform = "windows";
+let winMode = "folder";
+let androidMode = "folder";
+let linuxMode = "folder";
+let lastScript = "";
+
+const CREDS_KEY = "cloudsavesync_credentials";
+window.addEventListener("DOMContentLoaded", () => {
+  const saved = localStorage.getItem(CREDS_KEY);
+  if (saved) document.getElementById("win_credentialsJson").value = saved;
+});
+
+function slugify(name) {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "game";
+}
+
+function cleanPath(s) { return s.trim().replace(/^["']+|["']+$/g, ""); }
+
+function bashQuote(p) {
+  return '    "' + p.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+}
+
+function downloadBlob(content, filename) {
+  const blob = new Blob([content], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function showPreview(script) {
+  lastScript = script;
+  document.getElementById("scriptPreview").textContent = script;
+  document.getElementById("previewWrap").classList.add("visible");
+}
+
+function selectElementText(el) {
+  if (window.getSelection && document.createRange) {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
+function fallbackCopy(text) {
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "0";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+function copyTextRobust(text) {
+  return new Promise((resolve) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => resolve(true))
+        .catch(() => resolve(fallbackCopy(text)));
+    } else {
+      resolve(fallbackCopy(text));
+    }
+  });
+}
+
+function copyScript() {
+  copyTextRobust(lastScript).then((ok) => {
+    const btn = document.getElementById("copyBtn");
+    if (ok) {
+      btn.textContent = "Copied!";
+    } else {
+      selectElementText(document.getElementById("scriptPreview"));
+      btn.textContent = "Selected — use device copy";
+    }
+    setTimeout(function(){ btn.textContent = "Copy"; }, 2500);
+  });
+}
+
+function clearFieldError(id) {
+  const el = document.getElementById(id);
+  const errEl = document.getElementById("err-" + id);
+  if (el) el.classList.remove("error");
+  if (errEl) errEl.classList.remove("visible");
+}
+
+// ── Platform switching ──────────────────────────────────────────────────────────
+
+function setPlatform(p) {
+  currentPlatform = p;
+  document.getElementById("platOptWindows").classList.toggle("selected", p === "windows");
+  document.getElementById("platOptAndroid").classList.toggle("selected", p === "android");
+  document.getElementById("platOptLinux").classList.toggle("selected", p === "linux");
+  document.getElementById("platformWindows").style.display = p === "windows" ? "" : "none";
+  document.getElementById("platformAndroid").style.display = p === "android" ? "" : "none";
+  document.getElementById("platformLinux").style.display   = p === "linux"   ? "" : "none";
+  document.getElementById("sidebarWindows").style.display = p === "windows" ? "" : "none";
+  document.getElementById("sidebarAndroid").style.display = p === "android" ? "" : "none";
+  document.getElementById("sidebarLinux").style.display   = p === "linux"   ? "" : "none";
+  document.getElementById("previewWrap").classList.remove("visible");
+  document.getElementById("successBanner").classList.remove("visible");
+}
+
+function setWinMode(mode) {
+  winMode = mode;
+  document.getElementById("winModeOptFolder").classList.toggle("selected", mode === "folder");
+  document.getElementById("winModeOptFiles").classList.toggle("selected", mode === "files");
+  document.getElementById("win_stepFolder").style.display = mode === "folder" ? "" : "none";
+  document.getElementById("win_stepFiles").style.display  = mode === "files"  ? "" : "none";
+}
+
+function setAndroidMode(mode) {
+  androidMode = mode;
+  document.getElementById("andModeOptFolder").classList.toggle("selected", mode === "folder");
+  document.getElementById("andModeOptFiles").classList.toggle("selected", mode === "files");
+  document.getElementById("and_stepFolder").style.display = mode === "folder" ? "" : "none";
+  document.getElementById("and_stepFiles").style.display  = mode === "files"  ? "" : "none";
+}
+
+function setLinuxMode(mode) {
+  linuxMode = mode;
+  document.getElementById("linModeOptFolder").classList.toggle("selected", mode === "folder");
+  document.getElementById("linModeOptFiles").classList.toggle("selected", mode === "files");
+  document.getElementById("lin_stepFolder").style.display = mode === "folder" ? "" : "none";
+  document.getElementById("lin_stepFiles").style.display  = mode === "files"  ? "" : "none";
+}
+
+// ── Windows ──────────────────────────────────────────────────────────────────
+
+function validateCredentials(raw) {
+  try {
+    const obj = JSON.parse(raw);
+    return obj && (obj.installed || obj.web);
+  } catch (e) {
+    return false;
+  }
+}
+
+function validateWin() {
+  let ok = true;
+  const requiredIds = winMode === "folder"
+    ? ["win_gameExe", "win_localSave", "driveFolder"]
+    : ["win_gameExe", "win_localFiles", "driveFolder"];
+  requiredIds.forEach(id => {
+    const el = document.getElementById(id);
+    const errEl = document.getElementById("err-" + id);
+    if (!el.value.trim()) {
+      el.classList.add("error");
+      errEl.classList.add("visible");
+      ok = false;
+    } else {
+      el.classList.remove("error");
+      errEl.classList.remove("visible");
+    }
+  });
+  const credEl  = document.getElementById("win_credentialsJson");
+  const credErr = document.getElementById("err-win_credentialsJson");
+  if (!validateCredentials(credEl.value.trim())) {
+    credEl.classList.add("error");
+    credErr.classList.add("visible");
+    ok = false;
+  } else {
+    credEl.classList.remove("error");
+    credErr.classList.remove("visible");
+  }
+  return ok;
+}
+
+function pyQuote(p) {
+  return '    r"' + p.replace(/"/g, '\\"') + '",';
+}
+
+function buildScriptWin() {
+  if (!validateWin()) return null;
+  const gameName     = document.getElementById("gameName").value.trim() || "My Game";
+  const gameExe      = cleanPath(document.getElementById("win_gameExe").value);
+  const gameShortcut = cleanPath(document.getElementById("win_gameShortcut").value);
+  const driveFolder  = document.getElementById("driveFolder").value.trim();
+  const credRaw      = document.getElementById("win_credentialsJson").value.trim();
+  const credMinified = JSON.stringify(JSON.parse(credRaw));
+  localStorage.setItem(CREDS_KEY, credRaw);
+
+  let localSave = "";
+  let localFilesPy = "";
+  if (winMode === "folder") {
+    localSave = cleanPath(document.getElementById("win_localSave").value);
+  } else {
+    const files = document.getElementById("win_localFiles").value
+      .split("\n").map(l => cleanPath(l)).filter(l => l.length > 0);
+    localFilesPy = files.map(pyQuote).join("\n");
+  }
+
+  const script = TEMPLATE_WIN
+    .replace("{{GAME_NAME}}",        gameName)
+    .replace("{{GAME_EXE}}",         gameExe)
+    .replace("{{GAME_SHORTCUT}}",    gameShortcut)
+    .replace("{{LOCAL_SAVE}}",       localSave)
+    .replace("{{LOCAL_FILES_PY}}",   localFilesPy)
+    .replace("{{DRIVE_FOLDER}}",     driveFolder)
+    .replace("{{CREDENTIALS_JSON}}", credMinified);
+  showPreview(script);
+  return { script, gameName };
+}
+
+function generateWin() {
+  const result = buildScriptWin();
+  if (!result) return;
+  const { script, gameName } = result;
+  const fileName = "sync_" + slugify(gameName) + ".py";
+  downloadBlob(script, fileName);
+  document.getElementById("successMsg").innerHTML =
+    "<strong>" + fileName + "</strong> downloaded — run it instead of launching your game directly.";
+  document.getElementById("successBanner").classList.add("visible");
+}
+
+function generateWinExe() {
+  const result = buildScriptWin();
+  if (!result) return;
+  const { script, gameName } = result;
+  const slug    = slugify(gameName);
+  const pyName  = "sync_" + slug + ".py";
+  const exeName = "sync_" + slug;
+  const batName = "build_" + slug + "_exe.bat";
+  const b64raw  = btoa(unescape(encodeURIComponent(script)));
+  const b64Lines = b64raw.match(/.{1,64}/g) || [];
+  const echoLines = b64Lines.map(function(l){ return "echo " + l; }).join("\r\n");
+  const bat = "@echo off\r\nsetlocal enabledelayedexpansion\r\n"
+    + "echo [Cloud Save Sync] Building .exe for " + gameName + "...\r\necho.\r\n"
+    + "python --version >nul 2>&1\r\n"
+    + "if errorlevel 1 (\r\n"
+    + "    echo ERROR: Python not found. Install from https://python.org\r\n"
+    + "    pause & exit /b 1\r\n)\r\n"
+    + "echo [Cloud Save Sync] Installing build dependencies...\r\n"
+    + "pip install pyinstaller google-api-python-client google-auth-oauthlib --quiet\r\n"
+    + "if errorlevel 1 ( echo ERROR: pip install failed. & pause & exit /b 1 )\r\n"
+    + "echo [Cloud Save Sync] Writing Python script...\r\n"
+    + "set \"B64=%TEMP%\\\\" + slug + "_b64.txt\"\r\n"
+    + "(\r\n" + echoLines + "\r\n) > \"%B64%\"\r\n"
+    + "certutil -decode \"%B64%\" \"" + pyName + "\" >nul 2>&1\r\n"
+    + "del \"%B64%\"\r\n"
+    + "if not exist \"" + pyName + "\" ( echo ERROR: Failed to write script. & pause & exit /b 1 )\r\n"
+    + "echo [Cloud Save Sync] Compiling (this may take a minute)...\r\n"
+    + "python -m PyInstaller --onefile --console --name \"" + exeName + "\" \"" + pyName + "\"\r\n"
+    + "if errorlevel 1 ( echo ERROR: PyInstaller failed. & pause & exit /b 1 )\r\n"
+    + "if exist \"dist\\\\" + exeName + ".exe\" (\r\n"
+    + "    copy /y \"dist\\\\" + exeName + ".exe\" \"" + exeName + ".exe\" >nul\r\n"
+    + "    rmdir /s /q dist build __pycache__ 2>nul\r\n"
+    + "    del \"" + pyName + "\" \"" + exeName + ".spec\" 2>nul\r\n"
+    + "    echo.\r\n    echo Done! " + exeName + ".exe is ready.\r\n"
+    + "    echo You can delete this .bat file.\r\n"
+    + ") else ( echo ERROR: Build finished but exe not found. )\r\n"
+    + "echo.\r\npause\r\n";
+  downloadBlob(bat, batName);
+  document.getElementById("successMsg").innerHTML =
+    "<strong>" + batName + "</strong> downloaded — put it anywhere and double-click to build the .exe there.";
+  document.getElementById("successBanner").classList.add("visible");
+}
+
+// ── Android ──────────────────────────────────────────────────────────────────
+
+function validateAndroid() {
+  let ok = true;
+  const requiredIds = androidMode === "folder"
+    ? ["and_localSave", "driveFolder", "and_rcloneRemote"]
+    : ["and_localFiles", "driveFolder", "and_rcloneRemote"];
+  requiredIds.forEach(id => {
+    const el = document.getElementById(id);
+    const errEl = document.getElementById("err-" + id);
+    if (!el.value.trim()) {
+      el.classList.add("error");
+      errEl.classList.add("visible");
+      ok = false;
+    } else {
+      el.classList.remove("error");
+      errEl.classList.remove("visible");
+    }
+  });
+  return ok;
+}
+
+function buildScriptAndroid() {
+  if (!validateAndroid()) return null;
+  const gameName    = document.getElementById("gameName").value.trim() || "My Game";
+  const driveFolder = document.getElementById("driveFolder").value.trim();
+  const rcloneRemote= document.getElementById("and_rcloneRemote").value.trim();
+
+  let script;
+  if (androidMode === "folder") {
+    const localSave = cleanPath(document.getElementById("and_localSave").value);
+    script = TEMPLATE_ANDROID_FOLDER
+      .replace(/{{GAME_NAME}}/g, gameName)
+      .replace(/{{LOCAL_SAVE}}/g, localSave)
+      .replace(/{{DRIVE_FOLDER}}/g, driveFolder)
+      .replace(/{{RCLONE_REMOTE}}/g, rcloneRemote);
+  } else {
+    const files = document.getElementById("and_localFiles").value
+      .split("\n").map(l => cleanPath(l)).filter(l => l.length > 0);
+    const filesBlock = files.map(bashQuote).join("\n");
+    script = TEMPLATE_ANDROID_FILES
+      .replace(/{{GAME_NAME}}/g, gameName)
+      .replace("{{LOCAL_FILES}}", filesBlock)
+      .replace(/{{DRIVE_FOLDER}}/g, driveFolder)
+      .replace(/{{RCLONE_REMOTE}}/g, rcloneRemote);
+  }
+  showPreview(script);
+  return { gameName };
+}
+
+function generateAndroid() {
+  const result = buildScriptAndroid();
+  if (!result) return;
+  const fileName = "sync_" + slugify(result.gameName) + ".sh";
+  downloadBlob(lastScript, fileName);
+  document.getElementById("successMsg").innerHTML =
+    "<strong>" + fileName + "</strong> downloaded — move it into <code>~/.shortcuts/</code> in Termux.";
+  document.getElementById("successBanner").classList.add("visible");
+}
+
+function buildTermuxInstallCommand(script, filename) {
+  const utf8Bytes = unescape(encodeURIComponent(script));
+  const b64 = btoa(utf8Bytes);
+  const b64Block = (b64.match(/.{1,76}/g) || []).join("\n");
+  return "mkdir -p ~/.shortcuts\n"
+    + "base64 -d > ~/.shortcuts/" + filename + " << 'B64EOF'\n"
+    + b64Block + "\n"
+    + "B64EOF\n"
+    + "chmod +x ~/.shortcuts/" + filename + "\n"
+    + "echo \"Installed: ~/.shortcuts/" + filename + "\"\n";
+}
+
+function copyTermuxInstall() {
+  const result = buildScriptAndroid();
+  if (!result) return;
+  const fileName = "sync_" + slugify(result.gameName) + ".sh";
+  const cmd = buildTermuxInstallCommand(lastScript, fileName);
+  showPreview(cmd);
+  copyTextRobust(cmd).then((ok) => {
+    if (ok) {
+      document.getElementById("successMsg").innerHTML =
+        "Termux install command copied — open Termux, paste it (long-press → Paste), and press Enter. It writes <strong>" + fileName + "</strong> straight into <code>~/.shortcuts/</code>, already executable.";
+    } else {
+      document.getElementById("successMsg").innerHTML =
+        "Couldn't copy automatically. The command is shown below — tap the box to select it all, then use your device's copy option, and paste into Termux.";
+    }
+    document.getElementById("successBanner").classList.add("visible");
+  });
+}
+
+// ── Linux ────────────────────────────────────────────────────────────────────
+
+function validateLinux() {
+  let ok = true;
+  const requiredIds = linuxMode === "folder"
+    ? ["lin_localSave", "driveFolder", "lin_rcloneRemote"]
+    : ["lin_localFiles", "driveFolder", "lin_rcloneRemote"];
+  requiredIds.forEach(id => {
+    const el = document.getElementById(id);
+    const errEl = document.getElementById("err-" + id);
+    if (!el.value.trim()) {
+      el.classList.add("error");
+      errEl.classList.add("visible");
+      ok = false;
+    } else {
+      el.classList.remove("error");
+      errEl.classList.remove("visible");
+    }
+  });
+  return ok;
+}
+
+function buildScriptLinux() {
+  if (!validateLinux()) return null;
+  const gameName    = document.getElementById("gameName").value.trim() || "My Game";
+  const driveFolder = document.getElementById("driveFolder").value.trim();
+  const rcloneRemote= document.getElementById("lin_rcloneRemote").value.trim();
+  const gameProcess = document.getElementById("lin_gameProcess").value.trim();
+  const gameCmd     = cleanPath(document.getElementById("lin_gameCmd").value);
+
+  let script;
+  if (linuxMode === "folder") {
+    const localSave = cleanPath(document.getElementById("lin_localSave").value);
+    script = TEMPLATE_LINUX_FOLDER
+      .replace(/{{GAME_NAME}}/g, gameName)
+      .replace(/{{LOCAL_SAVE}}/g, localSave)
+      .replace(/{{DRIVE_FOLDER}}/g, driveFolder)
+      .replace(/{{RCLONE_REMOTE}}/g, rcloneRemote)
+      .replace(/{{GAME_PROCESS}}/g, gameProcess)
+      .replace(/{{GAME_CMD}}/g, gameCmd);
+  } else {
+    const files = document.getElementById("lin_localFiles").value
+      .split("\n").map(l => cleanPath(l)).filter(l => l.length > 0);
+    const filesBlock = files.map(bashQuote).join("\n");
+    script = TEMPLATE_LINUX_FILES
+      .replace(/{{GAME_NAME}}/g, gameName)
+      .replace("{{LOCAL_FILES}}", filesBlock)
+      .replace(/{{DRIVE_FOLDER}}/g, driveFolder)
+      .replace(/{{RCLONE_REMOTE}}/g, rcloneRemote)
+      .replace(/{{GAME_PROCESS}}/g, gameProcess)
+      .replace(/{{GAME_CMD}}/g, gameCmd);
+  }
+  showPreview(script);
+  return { gameName };
+}
+
+function generateLinux() {
+  const result = buildScriptLinux();
+  if (!result) return;
+  const fileName = "sync_" + slugify(result.gameName) + ".sh";
+  downloadBlob(lastScript, fileName);
+  document.getElementById("successMsg").innerHTML =
+    "<strong>" + fileName + "</strong> downloaded — chmod +x it and run it instead of launching the game directly.";
+  document.getElementById("successBanner").classList.add("visible");
+}
+
+// ── Universal import ─────────────────────────────────────────────────────────
+
+function extractPyVar(src, varName) {
+  const tripleRe = new RegExp(`^${varName}\\s*=\\s*r?"""([\\s\\S]*?)"""`, "m");
+  const singleRe = new RegExp(`^${varName}\\s*=\\s*r?"((?:[^"\\\\]|\\\\.)*)"`, "m");
+  let m = src.match(tripleRe);
+  if (m) return m[1].trim();
+  m = src.match(singleRe);
+  if (m) return m[1];
+  return null;
+}
+
+function extractShVar(src, varName) {
+  const re = new RegExp(`^${varName}="((?:[^"\\\\]|\\\\.)*)"`, "m");
+  const m = src.match(re);
+  return m ? m[1] : null;
+}
+
+function extractShGameName(src) {
+  const m = src.match(/^#\s*(.+?)\s+—\s+Cloud Save Sync/m);
+  return m ? m[1].trim() : null;
+}
+
+function extractShLocalFiles(src) {
+  const m = src.match(/LOCAL_FILES=\(([\s\S]*?)\n\)/);
+  if (!m) return null;
+  const items = [];
+  const itemRe = /"((?:[^"\\]|\\.)*)"/g;
+  let im;
+  while ((im = itemRe.exec(m[1])) !== null) {
+    items.push(im[1].replace(/\\"/g, '"').replace(/\\\\/g, "\\"));
+  }
+  return items;
+}
+
+function fillSharedCrossFields(localSaveGuess, filesGuess, rcloneGuess) {
+  // Best-effort pre-fill of the OTHER platforms' local-path fields so
+  // switching tabs doesn't start from a blank form. The user should still
+  // double check paths, since path syntax differs per OS.
+  if (localSaveGuess) {
+    if (!document.getElementById("win_localSave").value.trim()) document.getElementById("win_localSave").value = localSaveGuess;
+    if (!document.getElementById("and_localSave").value.trim()) document.getElementById("and_localSave").value = localSaveGuess;
+    if (!document.getElementById("lin_localSave").value.trim()) document.getElementById("lin_localSave").value = localSaveGuess;
+  }
+  if (filesGuess && filesGuess.length) {
+    const joined = filesGuess.join("\n");
+    if (!document.getElementById("and_localFiles").value.trim()) document.getElementById("and_localFiles").value = joined;
+    if (!document.getElementById("lin_localFiles").value.trim()) document.getElementById("lin_localFiles").value = joined;
+    if (!document.getElementById("win_localFiles").value.trim()) document.getElementById("win_localFiles").value = joined;
+    if (!document.getElementById("win_localSave").value.trim()) document.getElementById("win_localSave").value = filesGuess[0];
+  }
+  if (rcloneGuess) {
+    if (!document.getElementById("and_rcloneRemote").value.trim() || document.getElementById("and_rcloneRemote").value.trim() === "gdrive")
+      document.getElementById("and_rcloneRemote").value = rcloneGuess;
+    if (!document.getElementById("lin_rcloneRemote").value.trim() || document.getElementById("lin_rcloneRemote").value.trim() === "gdrive")
+      document.getElementById("lin_rcloneRemote").value = rcloneGuess;
+  }
+}
+
+function extractPyList(src, varName) {
+  const re = new RegExp(`${varName}\\s*=\\s*\\[([\\s\\S]*?)\\n\\]`, "m");
+  const m = src.match(re);
+  if (!m) return null;
+  const items = [];
+  const itemRe = /r"((?:[^"\\]|\\.)*)"/g;
+  let im;
+  while ((im = itemRe.exec(m[1])) !== null) {
+    items.push(im[1]);
+  }
+  return items;
+}
+
+// ── .exe import (PyInstaller) ────────────────────────────────────────────────
+// A built sync_<game>.exe is a PyInstaller "onefile" bundle: a bootloader with
+// a CArchive appended. The archive holds our script as a zlib-compressed,
+// marshalled Python code object. We find the archive, inflate the script,
+// unmarshal it, and replay its top-level `NAME = "constant"` assignments to
+// recover the exact config values — no need to re-type anything.
+
+// Cookie magic at the end of every PyInstaller archive: "MEI\014\013\012\013\016"
+const PYI_MAGIC = [0x4D, 0x45, 0x49, 0x0C, 0x0B, 0x0A, 0x0B, 0x0E];
+const PYI_COOKIE_LEN = 88; // magic(8) + pkgLen(4) + tocOff(4) + tocLen(4) + pyver(4) + pylib(64)
+
+// Opcode numbers per CPython version (checked against each version's `opcode` module).
+const PY_OPCODES = {
+  308: { LOAD_CONST: 100, STORE_NAME: 90,  EXTENDED_ARG: 144 },
+  309: { LOAD_CONST: 100, STORE_NAME: 90,  EXTENDED_ARG: 144 },
+  310: { LOAD_CONST: 100, STORE_NAME: 90,  EXTENDED_ARG: 144 },
+  311: { LOAD_CONST: 100, STORE_NAME: 90,  EXTENDED_ARG: 144 },
+  312: { LOAD_CONST: 100, STORE_NAME: 90,  EXTENDED_ARG: 144 },
+  313: { LOAD_CONST: 83,  STORE_NAME: 114, EXTENDED_ARG: 71 },
+  314: { LOAD_CONST: 82,  STORE_NAME: 116, EXTENDED_ARG: 69 },
+  315: { LOAD_CONST: 81,  STORE_NAME: 115, EXTENDED_ARG: 67 },
+};
+
+const PY_NULL = { pyNull: true };
+
+function pyiFindArchive(bytes) {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  // Search backwards: the real cookie is the last valid one (the bootloader's
+  // own code also contains the magic bytes, earlier in the file).
+  for (let pos = bytes.length - PYI_COOKIE_LEN; pos >= 0; pos--) {
+    if (bytes[pos] !== 0x4D) continue;
+    let hit = true;
+    for (let k = 1; k < 8; k++) if (bytes[pos + k] !== PYI_MAGIC[k]) { hit = false; break; }
+    if (!hit) continue;
+    const pkgLen = dv.getUint32(pos + 8);
+    const tocOff = dv.getUint32(pos + 12);
+    const tocLen = dv.getUint32(pos + 16);
+    const pyver  = dv.getUint32(pos + 20);
+    const pkgStart = pos + PYI_COOKIE_LEN - pkgLen;
+    if (pkgStart < 0 || tocOff + tocLen > pkgLen) continue;
+    return { dv, pkgStart, tocStart: pkgStart + tocOff, tocLen, pyver };
+  }
+  return null;
+}
+
+function pyiReadToc(bytes, arc) {
+  const { dv, pkgStart, tocStart, tocLen } = arc;
+  const entries = [];
+  const dec = new TextDecoder("utf-8");
+  let p = tocStart;
+  const end = tocStart + tocLen;
+  while (p + 18 <= end) {
+    const entryLen = dv.getUint32(p);
+    if (entryLen < 18 || p + entryLen > end) break;
+    let nameEnd = p + entryLen;
+    while (nameEnd > p + 18 && bytes[nameEnd - 1] === 0) nameEnd--;
+    entries.push({
+      offset:     pkgStart + dv.getUint32(p + 4),
+      length:     dv.getUint32(p + 8),
+      compressed: bytes[p + 16] !== 0,
+      type:       String.fromCharCode(bytes[p + 17]),
+      name:       dec.decode(bytes.subarray(p + 18, nameEnd)),
+    });
+    p += entryLen;
+  }
+  return entries;
+}
+
+async function zlibInflate(u8) {
+  if (typeof DecompressionStream === "undefined")
+    throw new Error("This browser can't decompress data (DecompressionStream missing) — try an up-to-date Chrome, Edge or Firefox.");
+  const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream("deflate"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+// Minimal reader for CPython's marshal format (3.8 – 3.15).
+function pyUnmarshal(u8, pyver) {
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  const utf8 = new TextDecoder("utf-8");
+  const refs = [];
+  const newLayout = pyver >= 311; // 3.11 reworked the code-object fields
+  let p = 0;
+
+  function need(n) { if (p + n > u8.length) throw new Error("marshal data truncated"); }
+  function byte()  { need(1); return u8[p++]; }
+  function i32()   { need(4); const v = dv.getInt32(p, true); p += 4; return v; }
+  function raw(n)  { if (n < 0) throw new Error("bad marshal length"); need(n); const s = u8.subarray(p, p + n); p += n; return s; }
+
+  function obj() {
+    const code = byte();
+    const t = String.fromCharCode(code & 0x7f);
+    let idx = -1;
+    if (code & 0x80) { idx = refs.length; refs.push(undefined); }
+    const keep = (v) => { if (idx >= 0) refs[idx] = v; return v; };
+    switch (t) {
+      case "0": return PY_NULL;
+      case "N": return null;
+      case "F": return false;
+      case "T": return true;
+      case "S": return keep({ pyStopIteration: true });
+      case ".": return keep({ pyEllipsis: true });
+      case "i": return keep(i32());
+      case "I": { const lo = dv.getUint32(p, true), hi = dv.getInt32(p + 4, true); raw(8); return keep(hi * 4294967296 + lo); }
+      case "l": {
+        const n = i32(); let v = 0, mul = 1;
+        for (let k = 0; k < Math.abs(n); k++) { need(2); v += dv.getUint16(p, true) * mul; p += 2; mul *= 32768; }
+        return keep(n < 0 ? -v : v);
+      }
+      case "g": { need(8); const v = dv.getFloat64(p, true); p += 8; return keep(v); }
+      case "y": { raw(16); return keep({ pyComplex: true }); }
+      case "f": { const n = byte(); return keep(parseFloat(utf8.decode(raw(n)))); }
+      case "x": { let n = byte(); raw(n); n = byte(); raw(n); return keep({ pyComplex: true }); }
+      case "s": return keep(raw(i32()));                       // bytes (also co_code)
+      case "t": case "u": case "a": case "A":
+        return keep(utf8.decode(raw(i32())));
+      case "z": case "Z":
+        return keep(utf8.decode(raw(byte())));
+      case "(": case "[": case "<": case ">": case ")": {
+        const n = (t === ")") ? byte() : i32();
+        const arr = keep([]);
+        for (let k = 0; k < n; k++) arr.push(obj());
+        return arr;
+      }
+      case "{": {
+        const d = keep(new Map());
+        for (;;) { const k = obj(); if (k === PY_NULL) break; d.set(k, obj()); }
+        return d;
+      }
+      case ":": { const s = keep({ pySlice: true }); obj(); obj(); obj(); return s; }
+      case "r": {
+        const n = i32();
+        if (n < 0 || n >= refs.length) throw new Error("bad marshal ref");
+        return refs[n];
+      }
+      case "c": {
+        const co = keep({ pyCode: true });
+        for (let k = 0; k < (newLayout ? 5 : 6); k++) i32();   // arg counts, (nlocals), stacksize, flags
+        co.code   = obj();
+        co.consts = obj();
+        co.names  = obj();
+        if (newLayout) {
+          obj(); obj();                 // localsplusnames, localspluskinds
+          obj(); co.name = obj(); obj(); // filename, name, qualname
+          i32();                        // firstlineno
+          obj(); obj();                 // linetable, exceptiontable
+        } else {
+          obj(); obj(); obj();          // varnames, freevars, cellvars
+          obj(); co.name = obj();       // filename, name
+          i32();                        // firstlineno
+          obj();                        // lnotab / linetable
+        }
+        return co;
+      }
+      default:
+        throw new Error("unknown marshal type '" + t + "' at byte " + (p - 1));
+    }
+  }
+  return obj();
+}
+
+// Replay `NAME = <constants>` at module level. Returns { NAME: [constants loaded since the previous store] }.
+function pyCollectAssignments(co, ops) {
+  const code = co.code, consts = co.consts, names = co.names;
+  const out = {};
+  let seg = [], ext = 0;
+  for (let i = 0; i + 1 < code.length; i += 2) {
+    const op = code[i], arg = code[i + 1] | ext;
+    if (op === ops.EXTENDED_ARG) { ext = arg << 8; continue; }
+    ext = 0;
+    if (op === ops.LOAD_CONST) {
+      seg.push(consts[arg]);
+    } else if (op === ops.STORE_NAME) {
+      const nm = names[arg];
+      if (typeof nm === "string" && !(nm in out)) out[nm] = seg;
+      seg = [];
+    }
+  }
+  return out;
+}
+
+// Fallback for a Python version not in PY_OPCODES: learn the two opcodes from the
+// known pattern  GAME_NAME = "…"  immediately followed by  GAME_EXE = r"…".
+function pyCalibrateOpcodes(co) {
+  const code = co.code, consts = co.consts, names = co.names;
+  const gi = names.indexOf("GAME_NAME"), ei = names.indexOf("GAME_EXE");
+  if (gi < 0 || ei < 0) return null;
+  for (let i = 2; i + 5 < code.length; i += 2) {
+    if (code[i + 1] !== gi || code[i + 5] !== ei) continue;
+    if (code[i - 2] !== code[i + 2] || code[i] !== code[i + 4]) continue;
+    if (typeof consts[code[i - 1]] !== "string" || typeof consts[code[i + 3]] !== "string") continue;
+    return { LOAD_CONST: code[i - 2], STORE_NAME: code[i], EXTENDED_ARG: -1 };
+  }
+  return null;
+}
+
+function winConfigFromAssignments(a) {
+  const lastStr = (name) => {
+    const seg = a[name];
+    if (!seg) return null;
+    for (let k = seg.length - 1; k >= 0; k--) if (typeof seg[k] === "string") return seg[k];
+    // Assigned, but no string constant loaded: Python 3.15+ loads "" via a
+    // special opcode (LOAD_COMMON_CONSTANT), so the value is an empty string.
+    return "";
+  };
+  const files = [];
+  (a.LOCAL_FILES || []).forEach((c) => {
+    if (typeof c === "string") files.push(c);
+    else if (Array.isArray(c)) c.forEach((x) => { if (typeof x === "string") files.push(x); });
+  });
+  const creds = lastStr("_CREDS_JSON");
+  return {
+    gameName:     lastStr("GAME_NAME"),
+    gameExe:      lastStr("GAME_EXE"),
+    gameShortcut: lastStr("GAME_SHORTCUT"),
+    localSave:    lastStr("LOCAL_SAVE"),
+    localFiles:   files,
+    driveFolder:  lastStr("DRIVE_FOLDER_LINK"),
+    credsJson:    creds === null ? null : creds.trim(),
+  };
+}
+
+function winConfigLooksValid(cfg) {
+  // Both are required fields when generating, so a correct decode always has them.
+  return cfg && !!cfg.gameExe && !!cfg.driveFolder;
+}
+
+// Main entry: ArrayBuffer of a .exe → { config, pyver, scriptName }. Throws a readable Error on failure.
+async function extractConfigFromExe(buffer) {
+  const bytes = new Uint8Array(buffer);
+  if (bytes.length < 2 || bytes[0] !== 0x4D || bytes[1] !== 0x5A)
+    throw new Error("That file isn't a Windows .exe.");
+  const arc = pyiFindArchive(bytes);
+  if (!arc) throw new Error("This .exe wasn't built with PyInstaller, so it isn't a Cloud Save Sync build.");
+  const pyver = arc.pyver;
+  const scripts = pyiReadToc(bytes, arc).filter((e) => e.type === "s");
+  if (!scripts.length) throw new Error("No Python script found inside this .exe.");
+
+  // Try our own script first (the bootstrap / runtime-hook scripts start with "pyi").
+  scripts.sort((x, y) => (x.name.startsWith("pyi") ? 1 : 0) - (y.name.startsWith("pyi") ? 1 : 0));
+
+  let lastErr = null;
+  for (const e of scripts) {
+    try {
+      let data = bytes.subarray(e.offset, e.offset + e.length);
+      if (e.compressed) data = await zlibInflate(data);
+      // Some PyInstaller versions keep a .pyc header in front of the code object.
+      const starts = [0, 16, 12, 8].filter((o) => data.length > o && (data[o] & 0x7f) === 0x63);
+      for (const off of starts) {
+        const body = data.subarray(off);
+        const layoutsToTry = pyver >= 311 ? [pyver, 310] : [pyver, 311];
+        for (const ver of layoutsToTry) {
+          let co;
+          try { co = pyUnmarshal(body, ver); } catch (err) { lastErr = err; continue; }
+          if (!co || !co.pyCode || !Array.isArray(co.names) || !co.names.includes("GAME_EXE")) continue;
+          const tables = [PY_OPCODES[pyver], pyCalibrateOpcodes(co)].concat(Object.values(PY_OPCODES));
+          for (const ops of tables) {
+            if (!ops) continue;
+            const cfg = winConfigFromAssignments(pyCollectAssignments(co, ops));
+            if (winConfigLooksValid(cfg)) return { config: cfg, pyver, scriptName: e.name };
+          }
+        }
+      }
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (lastErr && /DecompressionStream/.test(lastErr.message)) throw lastErr;
+  if (lastErr) console.warn("[Cloud Save Sync] exe import:", lastErr);
+  throw new Error("This .exe was built with PyInstaller, but it doesn't contain a Cloud Save Sync script.");
+}
+// ── end .exe import ──────────────────────────────────────────────────────────
+
+function applyWinConfig(cfg) {
+  if (cfg.gameName     !== null) document.getElementById("gameName").value = cfg.gameName;
+  if (cfg.gameExe      !== null) document.getElementById("win_gameExe").value = cfg.gameExe;
+  if (cfg.gameShortcut !== null) document.getElementById("win_gameShortcut").value = cfg.gameShortcut;
+  if (cfg.driveFolder  !== null) document.getElementById("driveFolder").value = cfg.driveFolder;
+  if (cfg.credsJson    !== null) {
+    document.getElementById("win_credentialsJson").value = cfg.credsJson;
+    localStorage.setItem(CREDS_KEY, cfg.credsJson);
+  }
+  if (cfg.localFiles && cfg.localFiles.length) {
+    document.getElementById("win_localFiles").value = cfg.localFiles.join("\n");
+    setWinMode("files");
+  } else {
+    if (cfg.localSave !== null) document.getElementById("win_localSave").value = cfg.localSave;
+    setWinMode("folder");
+  }
+  fillSharedCrossFields(cfg.localSave, cfg.localFiles, null);
+  setPlatform("windows");
+  ["win_gameExe","win_localSave","win_localFiles","driveFolder","win_credentialsJson"].forEach(clearFieldError);
+}
+
+function importExe(file, input) {
+  file.arrayBuffer()
+    .then(extractConfigFromExe)
+    .then(({ config, pyver }) => {
+      applyWinConfig(config);
+      const v = Math.floor(pyver / 100) + "." + (pyver % 100);
+      document.getElementById("successMsg").innerHTML =
+        "Settings loaded from <strong>" + file.name.replace(/[<>&]/g, "") + "</strong> (built with Python " + v + "). Check them, then rebuild.";
+      document.getElementById("successBanner").classList.add("visible");
+    })
+    .catch((err) => {
+      alert("Couldn't read settings from " + file.name + ":\n\n" + err.message);
+    })
+    .finally(() => { input.value = ""; });
+}
+
+function importScript(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (/\.exe$/i.test(file.name || "")) { importExe(file, input); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const src = e.target.result;
+    const name = (file.name || "").toLowerCase();
+    const isPy = name.endsWith(".py") || /^import os/m.test(src);
+    const isTermux = /com\.termux/.test(src.split("\n")[0] || "");
+
+    let gameName = null, driveFolder = null;
+
+    if (isPy) {
+      // ── Windows / Python ──
+      gameName    = extractPyVar(src, "GAME_NAME");
+      const gameExe      = extractPyVar(src, "GAME_EXE");
+      const gameShortcut = extractPyVar(src, "GAME_SHORTCUT");
+      const localSave    = extractPyVar(src, "LOCAL_SAVE");
+      const localFiles   = extractPyList(src, "LOCAL_FILES");
+      driveFolder         = extractPyVar(src, "DRIVE_FOLDER_LINK");
+      const credsJson     = extractPyVar(src, "_CREDS_JSON");
+
+      if (!gameExe && !localSave && !(localFiles && localFiles.length)) {
+        alert("Couldn't read the script — make sure you're importing a Cloud Save Sync file.");
+        input.value = "";
+        return;
+      }
+      applyWinConfig({ gameName, gameExe, gameShortcut, localSave, localFiles, driveFolder, credsJson });
+
+    } else {
+      // ── Android or Linux bash script ──
+      gameName = extractShGameName(src);
+      const remote = extractShVar(src, "REMOTE");
+      driveFolder  = extractShVar(src, "DRIVE_LINK");
+      const isFilesMode = /LOCAL_FILES=\(/.test(src);
+
+      if (!remote && !driveFolder) {
+        alert("Couldn't read the script — make sure you're importing a Cloud Save Sync file.");
+        input.value = "";
+        return;
+      }
+      if (gameName    !== null) document.getElementById("gameName").value = gameName;
+      if (driveFolder !== null) document.getElementById("driveFolder").value = driveFolder;
+
+      const targetPlatform = isTermux ? "android" : "linux";
+      const prefix = isTermux ? "and_" : "lin_";
+
+      if (remote !== null) document.getElementById(prefix + "rcloneRemote").value = remote;
+
+      let localSave = null, files = null;
+      if (isFilesMode) {
+        files = extractShLocalFiles(src);
+        if (files) document.getElementById(prefix + "localFiles").value = files.join("\n");
+        if (isTermux) setAndroidMode("files"); else setLinuxMode("files");
+      } else {
+        localSave = extractShVar(src, "LOCAL_SAVE");
+        if (localSave !== null) document.getElementById(prefix + "localSave").value = localSave;
+        if (isTermux) setAndroidMode("folder"); else setLinuxMode("folder");
+      }
+
+      if (!isTermux) {
+        const gameProcess = extractShVar(src, "GAME_PROCESS");
+        const gameCmd     = extractShVar(src, "GAME_CMD");
+        if (gameProcess !== null) document.getElementById("lin_gameProcess").value = gameProcess;
+        if (gameCmd     !== null) document.getElementById("lin_gameCmd").value = gameCmd;
+      }
+
+      fillSharedCrossFields(localSave, files, remote);
+      setPlatform(targetPlatform);
+      ["and_localSave","and_localFiles","and_rcloneRemote","lin_localSave","lin_localFiles","lin_rcloneRemote","driveFolder"].forEach(clearFieldError);
+    }
+
+    input.value = "";
+  };
+  reader.readAsText(file);
+}
+
+// ── Field-clearing listeners ─────────────────────────────────────────────────
+
+[
+  "win_gameExe", "win_localSave", "win_localFiles", "win_credentialsJson",
+  "and_localSave", "and_localFiles", "and_rcloneRemote",
+  "lin_localSave", "lin_localFiles", "lin_rcloneRemote",
+  "driveFolder"
+].forEach(function(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("input", function() {
+    if (id === "win_credentialsJson") {
+      if (validateCredentials(el.value.trim())) clearFieldError(id);
+    } else if (el.value.trim()) {
+      clearFieldError(id);
+    }
+  });
+});
+
+</script>
+<footer style="text-align:center;color:var(--muted);font-size:0.85rem;margin-top:48px">
+  Everything runs in your browser &mdash; nothing you type is sent anywhere. &middot;
+  <a href="https://github.com/FrozenFrostFox/game-save-sync" style="color:var(--accent2)">Source on GitHub</a> &middot; GPL-3.0
+</footer>
+</body>
+</html>
