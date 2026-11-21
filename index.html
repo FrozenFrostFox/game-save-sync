@@ -75,7 +75,7 @@
 
     .layout {
       display: grid;
-      grid-template-columns: 1fr 360px;
+      grid-template-columns: minmax(0, 1fr) 360px;
       gap: 28px;
       max-width: 1100px;
       margin: 0 auto;
@@ -84,6 +84,11 @@
       .layout { grid-template-columns: 1fr; }
       .sidebar { order: -1; }
     }
+
+    /* Grid/flex children default to min-width:auto, so one long unbreakable line
+       (e.g. the script preview) used to stretch the whole page sideways. */
+    .layout > *, .step-body, .card { min-width: 0; }
+    .step-body .hint code, .tip-block code { overflow-wrap: anywhere; }
 
     .card {
       background: var(--surface);
@@ -279,6 +284,51 @@
       line-height: 1.6;
       max-height: 400px;
       overflow-y: auto;
+      max-width: 100%;
+    }
+
+    .builtin-ok {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      background: #0d2e22;
+      border: 1px solid #1f6b4f;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: #b7f0d8;
+      margin: 4px 0 10px;
+    }
+    .creds-details summary {
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: var(--accent2);
+      margin: 4px 0;
+    }
+    .btn-small {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.78rem;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    .btn-small:hover { border-color: var(--accent2); }
+    .cmd-box {
+      background: #080b12;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: 'Consolas', monospace;
+      font-size: 0.72rem;
+      color: #a9b1d6;
+      word-break: break-all;
+      white-space: pre-wrap;
+      margin: 8px 0;
+      max-height: 140px;
+      overflow-y: auto;
     }
 
     .note {
@@ -434,15 +484,24 @@
         <div class="step">
           <div class="step-num">5</div>
           <div class="step-body">
-            <label for="win_credentialsJson">Google OAuth credentials <span style="color:var(--muted);font-weight:400">(credentials.json)</span></label>
-            <div class="hint">
-              Paste the full contents of the <code>credentials.json</code> file you download from Google Cloud Console. One-time setup — see the sidebar.<br/>
-              Your credentials are saved in this browser so you don't need to paste them again for future games.
+            <label for="win_credentialsJson">Google sign-in</label>
+            <div class="builtin-ok" id="builtinCredsNote" style="display:none">
+              ✅ <span><strong>Built into this page — nothing to set up.</strong> The first time the script runs, your browser opens and you sign in to <em>your own</em> Google account. Your saves go to your Drive only.</span>
             </div>
-            <textarea id="win_credentialsJson"
-                      placeholder='{"installed":{"client_id":"...","client_secret":"...","redirect_uris":[...],...}}'
-                      rows="5"></textarea>
-            <div class="field-error" id="err-win_credentialsJson">Please paste your credentials.json content (must be valid JSON with an "installed" key).</div>
+            <details id="credsDetails" class="creds-details">
+              <summary id="credsSummary">Advanced: use your own Google Cloud credentials</summary>
+              <div class="hint" style="margin-top:10px">
+                Paste the full contents of the <code>credentials.json</code> (Desktop app client) from Google Cloud Console — see <em>One-time setup</em> in the sidebar.<br/>
+                Saved in this browser, so you only paste it once.
+              </div>
+              <textarea id="win_credentialsJson"
+                        placeholder='{"installed":{"client_id":"...","client_secret":"...","redirect_uris":[...],...}}'
+                        rows="5"></textarea>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+                <button type="button" class="btn-small" onclick="resetToBuiltinCreds()" id="btnResetCreds" style="display:none">↺ Use the built-in sign-in again</button>
+              </div>
+            </details>
+            <div class="field-error" id="err-win_credentialsJson">Paste your credentials.json content (valid JSON with an "installed" key) under <em>Advanced</em>.</div>
           </div>
         </div>
 
@@ -450,10 +509,20 @@
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn-generate" onclick="generateWin()" style="flex:1;min-width:160px;">⬇ Download as .py</button>
-          <button class="btn-generate" onclick="generateWinExe()" style="flex:1;min-width:160px;background:transparent;border:2px solid var(--accent);color:var(--accent);" title="Downloads a .bat file — double-click it to auto-build a standalone .exe (needs Python installed once)">📦 Build as .exe</button>
+          <button class="btn-generate" onclick="copyWinBuildCommand()" style="flex:1;min-width:160px;background:transparent;border:2px solid var(--accent);color:var(--accent);" title="Copies a PowerShell command that builds the .exe. Nothing is downloaded, so Windows doesn't flag anything as unsafe.">📋 Build .exe (copy command)</button>
         </div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;">
-          <strong>.py</strong> — run directly with Python. &nbsp;|&nbsp; <strong>.exe</strong> — downloads a builder script; double-click it to compile a standalone executable.
+        <div style="font-size:0.74rem;color:var(--muted);margin-top:8px;line-height:1.6;">
+          <strong>Build .exe (recommended):</strong> open the folder where you want the .exe, click the address bar, type <code style="background:var(--surface2);padding:1px 5px;border-radius:4px;">powershell</code>, press Enter, then paste (right-click) and press Enter. Nothing is downloaded, so Windows has nothing to block.
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <button type="button" class="btn-small" onclick="generateWinExe()" title="Downloads a .bat file. Double-click it to build the .exe. Windows marks downloaded .bat files as unsafe, so you may need to click More info → Run anyway.">⬇ Or download a .bat builder</button>
+          <label style="font-size:0.78rem;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="checkbox" id="win_batSelfDelete" checked style="accent-color:var(--accent)" />
+            Delete the .bat after the .exe is built
+          </label>
+        </div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;line-height:1.5;">
+          Windows flags every downloaded .bat as unsafe. If it's blocked, right-click it → <em>Properties</em> → tick <em>Unblock</em> → <em>OK</em>, or use the copy command above instead.
         </div>
       </div>
 
@@ -660,26 +729,31 @@
         </div>
         <hr class="divider" />
         <div class="tip-block">
-          <h3>☁️ Google Cloud project</h3>
-          <p>A free Google Cloud project with the Drive API enabled. See the setup guide below — takes about 5 minutes, once.</p>
+          <h3>☁️ Google sign-in</h3>
+          <p class="if-creds">Ready — nothing else to set up. You sign in through your browser the first time the script runs.</p>
+          <p class="if-no-creds">Paste a credentials.json under <em>Advanced</em> in step 5, or press <em>Use the built-in sign-in again</em>.</p>
         </div>
       </div>
+    </div>
 
-      <div class="card" style="margin-bottom:20px">
-        <div class="card-title">Getting Your credentials.json</div>
-        <div class="tip-block">
-          <ol>
-            <li>Go to <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--accent2)">console.cloud.google.com</a></li>
-            <li>Create a new project (e.g. <em>Cloud Save Sync</em>)</li>
-            <li><strong>APIs &amp; Services → Library</strong>, search <em>Google Drive API</em>, enable it</li>
-            <li><strong>OAuth consent screen</strong> → <em>External</em> → fill in an app name → save</li>
-            <li><strong>Credentials → Create Credentials → OAuth 2.0 Client ID</strong></li>
-            <li>Choose <strong>Desktop app</strong> → create</li>
-            <li>Click <strong>Download JSON</strong></li>
-            <li>Paste its contents into the credentials field above</li>
-          </ol>
-        </div>
+    <div class="card" style="margin-bottom:20px" id="ownerSetupCard">
+      <div class="card-title">One-time setup: your own Google sign-in</div>
+      <div class="tip-block">
+        <p style="margin-bottom:8px">Everyone does this once, on any computer, in about 5 minutes. It's free. It gives the scripts permission to use <em>your</em> Google Drive, and your login details stay with you.</p>
+        <ol>
+          <li>Go to <a href="https://console.cloud.google.com/" target="_blank" style="color:var(--accent2)">console.cloud.google.com</a> and create a project (e.g. <em>Cloud Save Sync</em>).</li>
+          <li><strong>APIs &amp; Services → Library</strong> → search <em>Google Drive API</em> → <strong>Enable</strong>.</li>
+          <li><strong>Google Auth Platform → Get started</strong>: app name, support email, Audience <strong>External</strong>, contact email → <strong>Create</strong>.</li>
+          <li><strong>Data Access → Add or remove scopes</strong> → add <code>https://www.googleapis.com/auth/drive</code> → <strong>Update</strong> → <strong>Save</strong>.</li>
+          <li><strong>Clients → Create client</strong> → Application type <strong>Desktop app</strong> → <strong>Create</strong> → <strong>Download JSON</strong>.</li>
+          <li><strong>Audience → Publish app → Confirm</strong>. <span style="color:var(--yellow)">This is the step that stops the sign-in from expiring every 7 days.</span> It also lets people outside your test-user list sign in.</li>
+          <li>Open the downloaded <code>client_secret_….json</code> in Notepad, copy everything, and paste it in Windows step 5 (box under <em>Paste your Google credentials.json</em>). Do this even if you only use Android or Linux: the page uses it to build your rclone setup command. It's remembered in this browser only.</li>
+        </ol>
+                <p style="margin-top:8px">Unverified apps work for up to 100 users. Each person sees a "Google hasn't verified this app" screen the first time. They click <strong>Advanced → Go to (app name)</strong>.</p>
       </div>
+    </div>
+
+    <div id="sidebarWindowsRest">
 
       <div class="card" style="margin-bottom:20px">
         <div class="card-title">First-Time Sign-In</div>
@@ -755,8 +829,14 @@
         </div>
         <hr class="divider" />
         <div class="tip-block">
-          <h3>🔗 Connect Google Drive</h3>
-          <p>Run <code>rclone config</code>, choose <em>New remote</em>, name it (e.g. <code>gdrive</code>), pick <em>Google Drive</em>, follow the sign-in flow. Use that same name in the form.</p>
+          <h3>🔗 Connect Google Drive (one command)</h3>
+          <div class="rclone-setup">
+            <p class="if-creds">Paste this into Termux and press Enter. Termux prints a <code>http://127.0.0.1:53682/…</code> link: long-press it → <em>Open URL</em>, sign in with your Google account, and come back.</p>
+            <div class="cmd-box rclone-cmd if-creds"></div>
+            <button type="button" class="btn-small if-creds" onclick="copyRcloneSetup(this)">📋 Copy setup command</button>
+            <p class="if-no-creds">This copy has no built-in sign-in, so paste a credentials.json under <em>Advanced</em> in Windows step 5 (see One-time setup in the sidebar) (rclone's own shared Google login is being retired in 2026). Or run <code>rclone config</code> and enter your own client ID and secret.</p>
+          </div>
+          <p style="margin-top:8px">It creates a remote with the name in the <em>rclone remote name</em> field. Already set it up and it stopped working? Run the command again. It replaces the old login.</p>
         </div>
         <hr class="divider" />
         <div class="tip-block">
@@ -800,8 +880,14 @@
         </div>
         <hr class="divider" />
         <div class="tip-block">
-          <h3>🔗 Connect Google Drive</h3>
-          <p>Run <code>rclone config</code>, choose <em>New remote</em>, name it (e.g. <code>gdrive</code>), pick <em>Google Drive</em>, and follow the browser sign-in flow (rclone opens it automatically on desktop Linux). Use that same name in the form.</p>
+          <h3>🔗 Connect Google Drive (one command)</h3>
+          <div class="rclone-setup">
+            <p class="if-creds">Paste this into a terminal and press Enter. Your browser opens. Sign in with your Google account and you're done.</p>
+            <div class="cmd-box rclone-cmd if-creds"></div>
+            <button type="button" class="btn-small if-creds" onclick="copyRcloneSetup(this)">📋 Copy setup command</button>
+            <p class="if-no-creds">This copy has no built-in sign-in, so paste a credentials.json under <em>Advanced</em> in Windows step 5 (see One-time setup in the sidebar) (rclone's own shared Google login is being retired in 2026). Or run <code>rclone config</code> and enter your own client ID and secret.</p>
+          </div>
+          <p style="margin-top:8px">It creates a remote with the name in the <em>rclone remote name</em> field. Already set it up and it stopped working? Run the command again. It replaces the old login.</p>
         </div>
         <hr class="divider" />
         <div class="tip-block">
@@ -945,24 +1031,50 @@ def get_service():
     from google.auth.transport.requests import Request
     from googleapiclient.discovery import build
 
+    from google.auth.exceptions import RefreshError
+
     creds = None
     if os.path.exists(TOKEN_PATH):
-        creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
+        try:
+            creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
+        except Exception:
+            log("Saved sign-in is unreadable - you'll be asked to sign in again.")
+            creds = None
+
+    if creds and not creds.valid and creds.expired and creds.refresh_token:
+        log("Refreshing Google auth token...")
+        try:
+            creds.refresh(Request())
+        except RefreshError:
+            # The refresh token was revoked or expired. Instead of failing on
+            # every run from now on, throw it away and sign in again.
+            log("Your Google sign-in expired or was revoked. Signing in again...")
+            log("(If this happens about once a week, the Google Cloud project behind")
+            log(" these credentials is still in 'Testing'. Fix it once: Google Cloud")
+            log(" Console > Google Auth Platform > Audience > Publish app.)")
+            creds = None
+            try:
+                os.remove(TOKEN_PATH)
+            except OSError:
+                pass
 
     if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            log("Refreshing Google auth token...")
-            creds.refresh(Request())
-        else:
-            log("Opening browser for Google sign-in (first-time only)...")
-            tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
-            tmp.write(_CREDS_JSON)
-            tmp.close()
-            try:
-                flow = InstalledAppFlow.from_client_secrets_file(tmp.name, SCOPES)
-                creds = flow.run_local_server(port=0)
-            finally:
-                os.unlink(tmp.name)
+        log("Opening your browser for Google sign-in...")
+        log("If Google says the app isn't verified: click Advanced, then Go to (app name).")
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+        tmp.write(_CREDS_JSON)
+        tmp.close()
+        try:
+            flow = InstalledAppFlow.from_client_secrets_file(tmp.name, SCOPES)
+            # access_type=offline + prompt=consent guarantees Google hands back a
+            # refresh token, so this sign-in keeps working on future runs.
+            creds = flow.run_local_server(port=0, access_type="offline", prompt="consent")
+        finally:
+            os.unlink(tmp.name)
+        with open(TOKEN_PATH, "w") as f:
+            f.write(creds.to_json())
+    elif creds.token and os.path.exists(TOKEN_PATH):
+        # Save the refreshed access token so the next run doesn't refresh again.
         with open(TOKEN_PATH, "w") as f:
             f.write(creds.to_json())
 
@@ -1349,14 +1461,14 @@ if [[ "$cloud_iso" > "$local_iso" ]]; then
     if "\${RCLONE[@]}" copy "$REMOTE_PATH" "$LOCAL_SAVE" --update -v; then
         log "Download complete."
     else
-        log "ERROR during download. Check the Drive link and your rclone remote."
+        log "ERROR during download. Check the Drive link and your rclone remote. If the Google sign-in expired, run the setup command from the Cloud Save Sync page again."
     fi
 elif [[ "$local_iso" > "$cloud_iso" ]]; then
     log "Local save is newer. Uploading to cloud..."
     if "\${RCLONE[@]}" copy "$LOCAL_SAVE" "$REMOTE_PATH" --update -v; then
         log "Upload complete."
     else
-        log "ERROR during upload. Check the Drive link and your rclone remote."
+        log "ERROR during upload. Check the Drive link and your rclone remote. If the Google sign-in expired, run the setup command from the Cloud Save Sync page again."
     fi
 else
     log "Saves are already in sync. Nothing to do."
@@ -1661,10 +1773,97 @@ let androidMode = "folder";
 let linuxMode = "folder";
 let lastScript = "";
 
-const CREDS_KEY = "cloudsavesync_credentials";
+// New key on purpose: the old key ("cloudsavesync_credentials") holds credentials
+// from before the built-in client existed, usually a project stuck in Testing.
+const CREDS_KEY = "cloudsavesync_own_credentials_v3";
+
+// ── Built-in Google client ─────────────────────────────────────────────────
+// Empty in the public version: each person uses their own free Google client
+// (see "One-time setup" in the sidebar). A private copy can put a Desktop-app
+// client JSON string here so its users only have to sign in.
+const BUILTIN_CREDS = "";
+
+function minifyJson(raw) {
+  try { return JSON.stringify(JSON.parse(raw)); } catch (e) { return null; }
+}
+
+function parseCreds(raw) {
+  try {
+    const obj = JSON.parse(raw);
+    return (obj && (obj.installed || obj.web)) || null;
+  } catch (e) { return null; }
+}
+
+function shSingleQuote(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'"; }
+
+function rcloneSetupCommand(remoteName) {
+  const c = parseCreds(document.getElementById("win_credentialsJson").value.trim());
+  if (!c || !c.client_id) return "";
+  const name = (remoteName || "gdrive").trim() || "gdrive";
+  return "rclone config delete " + shSingleQuote(name) + " 2>/dev/null; "
+       + "rclone config create " + shSingleQuote(name) + " drive"
+       + " client_id=" + shSingleQuote(c.client_id)
+       + " client_secret=" + shSingleQuote(c.client_secret || "")
+       + " scope=drive";
+}
+
+function refreshCredsUI() {
+  const ta = document.getElementById("win_credentialsJson");
+  const hasBuiltin = !!BUILTIN_CREDS;
+  const current = minifyJson(ta.value.trim());
+  const usingBuiltin = hasBuiltin && current !== null && current === minifyJson(BUILTIN_CREDS);
+  const haveCreds = !!parseCreds(ta.value.trim());
+
+  document.getElementById("builtinCredsNote").style.display = usingBuiltin ? "" : "none";
+  document.getElementById("btnResetCreds").style.display = (hasBuiltin && !usingBuiltin) ? "" : "none";
+  document.getElementById("credsSummary").textContent = hasBuiltin
+    ? "Advanced: use your own Google Cloud credentials"
+    : "Paste your Google credentials.json (one time, see One-time setup in the sidebar)";
+  document.getElementById("ownerSetupCard").style.display = usingBuiltin ? "none" : "";
+
+  document.querySelectorAll(".if-creds").forEach(el => { el.style.display = haveCreds ? "" : "none"; });
+  document.querySelectorAll(".if-no-creds").forEach(el => { el.style.display = haveCreds ? "none" : ""; });
+
+  const andBox = document.querySelector("#sidebarAndroid .rclone-cmd");
+  const linBox = document.querySelector("#sidebarLinux .rclone-cmd");
+  if (andBox) andBox.textContent = rcloneSetupCommand(document.getElementById("and_rcloneRemote").value);
+  if (linBox) linBox.textContent = rcloneSetupCommand(document.getElementById("lin_rcloneRemote").value);
+}
+
+function resetToBuiltinCreds() {
+  document.getElementById("win_credentialsJson").value = BUILTIN_CREDS;
+  localStorage.removeItem(CREDS_KEY);
+  clearFieldError("win_credentialsJson");
+  refreshCredsUI();
+}
+
+function copyRcloneSetup(btn) {
+  const box = btn.parentElement.querySelector(".rclone-cmd");
+  const text = box ? box.textContent : "";
+  if (!text) return;
+  copyTextRobust(text).then((ok) => {
+    const old = btn.textContent;
+    if (ok) {
+      btn.textContent = "Copied!";
+    } else {
+      selectElementText(box);
+      btn.textContent = "Selected — use device copy";
+    }
+    setTimeout(function(){ btn.textContent = old; }, 2500);
+  });
+}
+
 window.addEventListener("DOMContentLoaded", () => {
-  const saved = localStorage.getItem(CREDS_KEY);
-  if (saved) document.getElementById("win_credentialsJson").value = saved;
+  const ta = document.getElementById("win_credentialsJson");
+  let saved = null;
+  try { saved = localStorage.getItem(CREDS_KEY); } catch (e) {}
+  ta.value = saved || BUILTIN_CREDS || "";
+  // No built-in client → the paste box is the only way in, so show it open.
+  document.getElementById("credsDetails").open = !BUILTIN_CREDS;
+  ["and_rcloneRemote", "lin_rcloneRemote"].forEach(id => {
+    document.getElementById(id).addEventListener("input", refreshCredsUI);
+  });
+  refreshCredsUI();
 });
 
 function slugify(name) {
@@ -1765,6 +1964,7 @@ function setPlatform(p) {
   document.getElementById("platformAndroid").style.display = p === "android" ? "" : "none";
   document.getElementById("platformLinux").style.display   = p === "linux"   ? "" : "none";
   document.getElementById("sidebarWindows").style.display = p === "windows" ? "" : "none";
+  document.getElementById("sidebarWindowsRest").style.display = p === "windows" ? "" : "none";
   document.getElementById("sidebarAndroid").style.display = p === "android" ? "" : "none";
   document.getElementById("sidebarLinux").style.display   = p === "linux"   ? "" : "none";
   document.getElementById("previewWrap").classList.remove("visible");
@@ -1828,6 +2028,7 @@ function validateWin() {
   if (!validateCredentials(credEl.value.trim())) {
     credEl.classList.add("error");
     credErr.classList.add("visible");
+    document.getElementById("credsDetails").open = true;
     ok = false;
   } else {
     credEl.classList.remove("error");
@@ -1848,7 +2049,10 @@ function buildScriptWin() {
   const driveFolder  = document.getElementById("driveFolder").value.trim();
   const credRaw      = document.getElementById("win_credentialsJson").value.trim();
   const credMinified = JSON.stringify(JSON.parse(credRaw));
-  localStorage.setItem(CREDS_KEY, credRaw);
+  try {
+    if (BUILTIN_CREDS && credMinified === minifyJson(BUILTIN_CREDS)) localStorage.removeItem(CREDS_KEY);
+    else localStorage.setItem(CREDS_KEY, credRaw);
+  } catch (e) {}
 
   let localSave = "";
   let localFilesPy = "";
@@ -1887,6 +2091,7 @@ function generateWinExe() {
   const result = buildScriptWin();
   if (!result) return;
   const { script, gameName } = result;
+  const selfDelete = document.getElementById("win_batSelfDelete").checked;
   const slug    = slugify(gameName);
   const pyName  = "sync_" + slug + ".py";
   const exeName = "sync_" + slug;
@@ -1895,35 +2100,94 @@ function generateWinExe() {
   const b64Lines = b64raw.match(/.{1,64}/g) || [];
   const echoLines = b64Lines.map(function(l){ return "echo " + l; }).join("\r\n");
   const bat = "@echo off\r\nsetlocal enabledelayedexpansion\r\n"
+    // Build next to the .bat even if it was started from somewhere else (e.g. "Run as administrator").
+    + "cd /d \"%~dp0\"\r\n"
     + "echo [Cloud Save Sync] Building .exe for " + gameName + "...\r\necho.\r\n"
     + "python --version >nul 2>&1\r\n"
     + "if errorlevel 1 (\r\n"
     + "    echo ERROR: Python not found. Install from https://python.org\r\n"
     + "    pause & exit /b 1\r\n)\r\n"
     + "echo [Cloud Save Sync] Installing build dependencies...\r\n"
-    + "pip install pyinstaller google-api-python-client google-auth-oauthlib --quiet\r\n"
+    + "python -m pip install pyinstaller google-api-python-client google-auth-oauthlib --quiet --disable-pip-version-check\r\n"
     + "if errorlevel 1 ( echo ERROR: pip install failed. & pause & exit /b 1 )\r\n"
     + "echo [Cloud Save Sync] Writing Python script...\r\n"
-    + "set \"B64=%TEMP%\\\\" + slug + "_b64.txt\"\r\n"
+    + "set \"B64=%TEMP%\\" + slug + "_b64.txt\"\r\n"
     + "(\r\n" + echoLines + "\r\n) > \"%B64%\"\r\n"
-    + "certutil -decode \"%B64%\" \"" + pyName + "\" >nul 2>&1\r\n"
+    + "certutil -f -decode \"%B64%\" \"" + pyName + "\" >nul 2>&1\r\n"
     + "del \"%B64%\"\r\n"
     + "if not exist \"" + pyName + "\" ( echo ERROR: Failed to write script. & pause & exit /b 1 )\r\n"
     + "echo [Cloud Save Sync] Compiling (this may take a minute)...\r\n"
-    + "python -m PyInstaller --onefile --console --name \"" + exeName + "\" \"" + pyName + "\"\r\n"
+    + "python -m PyInstaller --noconfirm --onefile --console --name \"" + exeName + "\" \"" + pyName + "\"\r\n"
     + "if errorlevel 1 ( echo ERROR: PyInstaller failed. & pause & exit /b 1 )\r\n"
-    + "if exist \"dist\\\\" + exeName + ".exe\" (\r\n"
-    + "    copy /y \"dist\\\\" + exeName + ".exe\" \"" + exeName + ".exe\" >nul\r\n"
-    + "    rmdir /s /q dist build __pycache__ 2>nul\r\n"
-    + "    del \"" + pyName + "\" \"" + exeName + ".spec\" 2>nul\r\n"
-    + "    echo.\r\n    echo Done! " + exeName + ".exe is ready.\r\n"
-    + "    echo You can delete this .bat file.\r\n"
-    + ") else ( echo ERROR: Build finished but exe not found. )\r\n"
-    + "echo.\r\npause\r\n";
+    + "if not exist \"dist\\" + exeName + ".exe\" ( echo ERROR: Build finished but exe not found. & pause & exit /b 1 )\r\n"
+    + "copy /y \"dist\\" + exeName + ".exe\" \"" + exeName + ".exe\" >nul\r\n"
+    + "rmdir /s /q dist build __pycache__ 2>nul\r\n"
+    + "del \"" + pyName + "\" \"" + exeName + ".spec\" 2>nul\r\n"
+    + "echo.\r\n"
+    + "echo Done! " + exeName + ".exe is ready.\r\n"
+    + (selfDelete
+        ? "echo This builder deletes itself when you close this window.\r\necho.\r\npause\r\n"
+          // Only reached after a successful build: every failure path above exits first.
+          // "(goto)" ends the batch context so cmd can delete the file it is running from.
+          + "(goto) 2>nul & del \"%~f0\"\r\n"
+        : "echo You can delete this .bat file.\r\necho.\r\npause\r\n");
   downloadBlob(bat, batName);
   document.getElementById("successMsg").innerHTML =
-    "<strong>" + batName + "</strong> downloaded — put it anywhere and double-click to build the .exe there.";
+    "<strong>" + batName + "</strong> downloaded. Put it in the folder where you want the .exe and double-click it."
+    + (selfDelete ? " It deletes itself after a successful build." : "")
+    + " If Windows blocks it: right-click → Properties → tick Unblock, or use <strong>Build .exe (copy command)</strong> instead.";
   document.getElementById("successBanner").classList.add("visible");
+}
+
+// PowerShell build command: pasted into a terminal, so nothing is downloaded and
+// Windows' "downloaded from the internet" flag (Mark of the Web) never applies.
+function buildWinPowerShellCommand(script, exeName) {
+  const b64 = btoa(unescape(encodeURIComponent(script)));
+  const b64Block = (b64.match(/.{1,100}/g) || []).join("\n");
+  return [
+    "& {",
+    "$name = '" + exeName + "'",
+    "$dest = (Get-Location).Path",
+    "if (($env:WINDIR -and $dest -like \"$env:WINDIR*\") -or $dest -eq $HOME) { $dest = Join-Path $HOME 'Cloud Save Sync' }",
+    "New-Item -ItemType Directory -Force -Path $dest | Out-Null",
+    "Write-Host \"[Cloud Save Sync] Building $name.exe in $dest\" -ForegroundColor Cyan",
+    "$py = $null",
+    "foreach ($c in 'python', 'py') { if (Get-Command $c -ErrorAction SilentlyContinue) { $null = & $c --version 2>&1; if ($LASTEXITCODE -eq 0) { $py = $c; break } } }",
+    "if (-not $py) { Write-Host 'ERROR: Python not found. Install it from https://www.python.org/downloads/ (tick \"Add python.exe to PATH\"), then paste this again.' -ForegroundColor Red; return }",
+    "$work = Join-Path $env:TEMP \"cloudsavesync_build_$name\"",
+    "New-Item -ItemType Directory -Force -Path $work | Out-Null",
+    "$src = Join-Path $work \"$name.py\"",
+    "$b64 = @'",
+    b64Block,
+    "'@",
+    "[IO.File]::WriteAllBytes($src, [Convert]::FromBase64String(($b64 -replace '\\s', '')))",
+    "Write-Host '[Cloud Save Sync] Installing build tools (the first time takes a minute)...' -ForegroundColor Cyan",
+    "& $py -m pip install --quiet --disable-pip-version-check pyinstaller google-api-python-client google-auth-oauthlib",
+    "if ($LASTEXITCODE -ne 0) { Write-Host 'ERROR: pip install failed - see above.' -ForegroundColor Red; return }",
+    "Write-Host '[Cloud Save Sync] Compiling...' -ForegroundColor Cyan",
+    "& $py -m PyInstaller --noconfirm --onefile --console --name $name --distpath $dest --workpath (Join-Path $work 'build') --specpath $work $src",
+    "$exe = Join-Path $dest \"$name.exe\"",
+    "if ($LASTEXITCODE -ne 0 -or -not (Test-Path $exe)) { Write-Host 'ERROR: PyInstaller failed - see above.' -ForegroundColor Red; return }",
+    "Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue",
+    "Write-Host \"Done! $exe is ready.\" -ForegroundColor Green",
+    "explorer.exe \"/select,`\"$exe`\"\"",
+    "}",
+    ""
+  ].join("\n");
+}
+
+function copyWinBuildCommand() {
+  const result = buildScriptWin();
+  if (!result) return;
+  const exeName = "sync_" + slugify(result.gameName);
+  const cmd = buildWinPowerShellCommand(result.script, exeName);
+  showPreview(cmd);
+  copyTextRobust(cmd).then((ok) => {
+    document.getElementById("successMsg").innerHTML = ok
+      ? "Build command copied. Open the folder where you want <strong>" + exeName + ".exe</strong>, click the address bar, type <strong>powershell</strong>, press Enter, right-click to paste, then press Enter. If Windows Terminal asks about pasting multiple lines, choose <em>Paste anyway</em>."
+      : "Couldn't copy automatically. The command is shown below: tap the box to select it all, copy it, and paste it into PowerShell.";
+    document.getElementById("successBanner").classList.add("visible");
+  });
 }
 
 // ── Android ──────────────────────────────────────────────────────────────────
@@ -2431,9 +2695,16 @@ function applyWinConfig(cfg) {
   if (cfg.gameExe      !== null) document.getElementById("win_gameExe").value = cfg.gameExe;
   if (cfg.gameShortcut !== null) document.getElementById("win_gameShortcut").value = cfg.gameShortcut;
   if (cfg.driveFolder  !== null) document.getElementById("driveFolder").value = cfg.driveFolder;
+  // Old builds carry the credentials they were made with (often a project still in
+  // "Testing", whose sign-ins expire weekly). Keep the built-in client instead.
+  if (cfg.credsJson !== null && BUILTIN_CREDS) cfg.credsJson = null;
   if (cfg.credsJson    !== null) {
     document.getElementById("win_credentialsJson").value = cfg.credsJson;
-    localStorage.setItem(CREDS_KEY, cfg.credsJson);
+    try {
+      if (BUILTIN_CREDS && minifyJson(cfg.credsJson) === minifyJson(BUILTIN_CREDS)) localStorage.removeItem(CREDS_KEY);
+      else localStorage.setItem(CREDS_KEY, cfg.credsJson);
+    } catch (e) {}
+    refreshCredsUI();
   }
   if (cfg.localFiles && cfg.localFiles.length) {
     document.getElementById("win_localFiles").value = cfg.localFiles.join("\n");
@@ -2554,6 +2825,7 @@ function importScript(input) {
   el.addEventListener("input", function() {
     if (id === "win_credentialsJson") {
       if (validateCredentials(el.value.trim())) clearFieldError(id);
+      refreshCredsUI();
     } else if (el.value.trim()) {
       clearFieldError(id);
     }
@@ -2562,7 +2834,8 @@ function importScript(input) {
 
 </script>
 <footer style="text-align:center;color:var(--muted);font-size:0.85rem;margin-top:48px">
-  Everything runs in your browser &mdash; nothing you type is sent anywhere. &middot;
+  Everything runs in your browser &mdash; nothing you type is sent anywhere. Your Google sign-in stays on your own device and your saves go only to your own Drive. &middot;
+  <a href="https://github.com/FrozenFrostFox/game-save-sync#privacy" style="color:var(--accent2)">Privacy</a> &middot;
   <a href="https://github.com/FrozenFrostFox/game-save-sync" style="color:var(--accent2)">Source on GitHub</a> &middot; GPL-3.0
 </footer>
 </body>
